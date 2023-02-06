@@ -1,5 +1,5 @@
 from pysat.solvers import Solver
-import encoding
+import pygarg.encoding as encoding
 
 def argset_from_model(model,args):
     extension = []

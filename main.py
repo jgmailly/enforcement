@@ -1,7 +1,8 @@
 import pygarg.parser as parser
 import sys
 import pygarg.solvers as solvers
-import time        
+import time
+from pysat.solvers import Solver
 
 semantics_list = ["CF", "AD", "ST", "CO"]
 problems_list = ["V1s", "V1ns"]
@@ -74,7 +75,7 @@ def r_SAT_variables(attacker, target, extension, args, nb_updated_extensions):
 #        print(f"r_({attacker},{target}) = {r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
 #print("--------------------")
 
-## These last ones may not be useful!!!!
+
 def x_SAT_variables(argument, extension, args, nb_updated_extensions):
     m = nb_updated_extensions
     k = len(args)
@@ -123,4 +124,50 @@ if problem == "V1s":
             for X in updated_extensions:
                 clauses.append([-membership_SAT_variables(argument, X, args, nb_updated_extensions)])
 
-print("Clauses = ", clauses)
+# Clauses from Extension enforcement by Niskanen et al
+for extension in updated_extensions:
+    # Arguments from the extension must be in the target for enforcement
+    for argument in args:
+        clauses.append([membership_SAT_variables(argument, extension, args, nb_updated_extensions), -x_SAT_variables(argument, extension, args, nb_updated_extensions)])
+    # Arguments that are forbidden in the extension must not be in the target for enforcement
+    for argument in args:
+        clauses.append([-membership_SAT_variables(argument, extension, args, nb_updated_extensions), x_SAT_variables(argument, extension, args, nb_updated_extensions)])
+    # These clauses enforce conflict-freeness of the target for enforcement    
+    for attacker in args:
+        for target in args:
+            clauses.append([-r_SAT_variables(attacker, target, extension, args, nb_updated_extensions), -x_SAT_variables(attacker, extension, args, nb_updated_extensions),-x_SAT_variables(target, extension, args, nb_updated_extensions)])
+    # These clauses enforce stability of the target for enforcement
+    for argument in args:
+        for other_argument in args:
+            clauses.append([x_SAT_variables(argument, extension, args, nb_updated_extensions),x_SAT_variables(other_argument, extension, args, nb_updated_extensions)])
+            clauses.append([x_SAT_variables(argument, extension, args, nb_updated_extensions),r_SAT_variables(other_argument, argument, extension, args, nb_updated_extensions)])
+    
+                
+#print("Clauses = ", clauses)
+
+time_start_enforcement = time.time()
+s = Solver(name='g4')
+for clause in clauses:
+    s.add_clause(clause)
+enforcement_time = time.time() - time_start_enforcement
+
+def decode_model_as_af(model,args,nb_updated_extensions):
+    result = ""
+    for attacker in args:
+        for target in args:
+            if r_SAT_variables(attacker, target, extension, args, nb_updated_extensions) in model:
+                result += f"att({attacker},{target}).\n"
+            elif -r_SAT_variables(attacker, target, extension, args, nb_updated_extensions) in model:
+                print("ok")
+            else :
+                print("ERROR!")
+    return result
+    
+if s.solve():
+    model = s.get_model()
+    print(model)
+    print(decode_model_as_af(model,args,nb_updated_extensions))
+else:
+    print("UNSAT")
+
+s.delete()

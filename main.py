@@ -38,9 +38,12 @@ print(f"Enumeration Time = {enumeration_time} - Extensions = {initial_extensions
 #### SAT Variables
 # Assume we have the initial theory T = (A,R) with |A| = k.
 # x_{a_i, E_X'} -> (i-1)*k + X
-# For each E_X', we need k + k*k variables:
-## x_{ai} -> m*m + (X-1)(k+k*k) + i
-## r_{ai,aj} -> m*m + (X-1)(k+k*k) + k + (i-1)*k + j
+# For building the updated theory, we need:
+## r_{ai,aj} -> (m*k) + (i-1)*k + j
+# For each E_X', we need k variables:
+##### Maybe the last ones are not useful, think about it.
+## x_{ai} -> (k*m + k*k) + (i-1)*k + X
+
 
 # m
 nb_updated_extensions = 5
@@ -58,31 +61,32 @@ def membership_SAT_variables(argument, extension, args, nb_updated_extensions):
 #        print(f"x_({argument},{extension}) = {membership_SAT_variables(argument, extension, args, nb_updated_extensions)}")
 #print("--------------------")
 
-def x_SAT_variables(argument, extension, args, nb_updated_extensions):
-    m = nb_updated_extensions
-    k = len(args)
-    i = args.index(argument) + 1
-    return (m * m) + (extension - 1) * (k+k*k) + i
-
-#print("--------------------")
-#for extension in updated_extensions:
-#        for argument in args:
-#                print(f"x_({argument}) = {x_SAT_variables(argument, extension, args, nb_updated_extensions)}")
-#print("--------------------")
-
 def r_SAT_variables(attacker, target, extension, args, nb_updated_extensions):
     m = nb_updated_extensions
     k = len(args)
     i = args.index(attacker) + 1
     j = args.index(target) + 1
-    return (m * m) + (extension - 1) * (k+k*k) + k + (i-1)*k + j
+    return (m * k) + (i-1)*k + j
 
 #print("--------------------")
-#for extension in updated_extensions:
-#        for attacker in args:
-#                for target in args:
-#                        print(f"r_({attacker},{target}) = {r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
+#for attacker in args:
+#    for target in args:
+#        print(f"r_({attacker},{target}) = {r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
 #print("--------------------")
+
+## These last ones may not be useful!!!!
+def x_SAT_variables(argument, extension, args, nb_updated_extensions):
+    m = nb_updated_extensions
+    k = len(args)
+    i = args.index(argument) + 1
+    return (m*k + k*k) + (i - 1) * m + extension
+
+#print("--------------------")
+#for argument in args:
+#    for extension in updated_extensions:
+#        print(f"y_({argument},{extension}) = {x_SAT_variables(argument, extension, args, nb_updated_extensions)}")
+#print("--------------------")
+
 
 clauses = []
 

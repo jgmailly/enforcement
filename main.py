@@ -104,11 +104,19 @@ def is_skeptically_accepted(argument, initial_extensions):
             return False
     return True
 
+# Clauses 2 from paper
 for argument in args:
     if is_credulously_accepted(argument, initial_extensions):
         new_clause = []
         for X in updated_extensions:
             new_clause.append(membership_SAT_variables(argument, X, args, nb_updated_extensions))
         clauses.append(new_clause)
+
+# Clauses 3 from paper, only for strict
+if problem == "V1s":
+    for argument in args:
+        if (argument != argname) and (not is_credulously_accepted(argument, initial_extensions)):
+            for X in updated_extensions:
+                clauses.append([-membership_SAT_variables(argument, X, args, nb_updated_extensions)])
 
 print("Clauses = ", clauses)

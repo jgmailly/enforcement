@@ -48,6 +48,8 @@ print(f"Enumeration Time = {enumeration_time} - Extensions = {initial_extensions
 ## def_{bi,ai, E_X'} -> (k*m + k*k) + (i-1)*k + X
 
 
+DEBUG = False
+
 # m
 nb_updated_extensions = 2
 updated_extensions = [x+1 for x in range(nb_updated_extensions)]
@@ -58,11 +60,12 @@ def membership_SAT_variables(argument, extension, args, nb_updated_extensions):
     i = args.index(argument) + 1
     return (i-1) * nb_updated_extensions + extension
 
-print("--------------------")
-for argument in args:
-    for extension in updated_extensions:
-        print(f"x_({argument},{extension}) = {membership_SAT_variables(argument, extension, args, nb_updated_extensions)}")
-print("--------------------")
+if DEBUG:
+    print("--------------------")
+    for argument in args:
+        for extension in updated_extensions:
+            print(f"x_({argument},{extension}) = {membership_SAT_variables(argument, extension, args, nb_updated_extensions)}")
+    print("--------------------")
 
 def r_SAT_variables(attacker, target, extension, args, nb_updated_extensions):
     m = nb_updated_extensions
@@ -71,25 +74,13 @@ def r_SAT_variables(attacker, target, extension, args, nb_updated_extensions):
     j = args.index(target) + 1
     return (m * k) + (i-1)*k + j
 
-print("--------------------")
-for attacker in args:
-    for target in args:
-        print(f"r_({attacker},{target}) = {r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
-print("--------------------")
+if DEBUG:
+    print("--------------------")
+    for attacker in args:
+        for target in args:
+            print(f"r_({attacker},{target}) = {r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
+    print("--------------------")
 
-
-#### PROBABLY USELESS
-def x_SAT_variables(argument, extension, args, nb_updated_extensions):
-    m = nb_updated_extensions
-    k = len(args)
-    i = args.index(argument) + 1
-    return (m*k + k*k) + (i - 1) * m + extension
-
-#print("--------------------")
-#for argument in args:
-#    for extension in updated_extensions:
-#        print(f"y_({argument},{extension}) = {x_SAT_variables(argument, extension, args, nb_updated_extensions)}")
-#print("--------------------")
 
 def defeat_SAT_variables(attacker, target, extension, args, nb_updated_extensions):
     k = len(args)
@@ -99,16 +90,13 @@ def defeat_SAT_variables(attacker, target, extension, args, nb_updated_extension
     X = extension
     return (k*m) + (k*k) + (X-1)*k*k + (i-1)*k + j
 
-print("--------------------")
-for X in updated_extensions:
-    for attacker in args:
-        for target in args:
-#            k = len(args)
-#            m = nb_updated_extensions
-#            i = args.index(attacker) + 1
-#            j = args.index(target) + 1
-            print(f"def_({attacker},{target},{X}) = {defeat_SAT_variables(attacker, target, X, args, nb_updated_extensions)}")
-print("--------------------")
+if DEBUG:
+    print("--------------------")
+    for X in updated_extensions:
+        for attacker in args:
+            for target in args:
+                print(f"def_({attacker},{target},{X}) = {defeat_SAT_variables(attacker, target, X, args, nb_updated_extensions)}")
+    print("--------------------")
 
 
 clauses = []
@@ -119,7 +107,8 @@ new_clause = []
 for X in updated_extensions:
     new_clause.append(membership_SAT_variables(argname, X, args, nb_updated_extensions))
 clauses.append(new_clause)
-print(clauses[-1])
+if DEBUG:
+    print(clauses[-1])
 
 def is_credulously_accepted(argument, initial_extensions):
     for extension in initial_extensions:
@@ -140,7 +129,8 @@ for argument in args:
         for X in updated_extensions:
             new_clause.append(membership_SAT_variables(argument, X, args, nb_updated_extensions))
         clauses.append(new_clause)
-        print(clauses[-1])
+        if DEBUG:
+            print(clauses[-1])
 
 # Clauses 3 from paper, only for strict
 if problem == "V1s":
@@ -148,17 +138,17 @@ if problem == "V1s":
         if (argument != argname) and (not is_credulously_accepted(argument, initial_extensions)):
             for X in updated_extensions:
                 clauses.append([-membership_SAT_variables(argument, X, args, nb_updated_extensions)])
-                print(clauses[-1])
+                if DEBUG:
+                    print(clauses[-1])
 
-###### TO DO
-######### CORRECT THE LAST PART WITH NEW VARIABLES
 # Clauses from Extension enforcement by Niskanen et al
 ## First part: conflict-freeness
 for extension in updated_extensions:
     for argument_a in args:
         for argument_b in args:
             clauses.append([-r_SAT_variables(argument_a, argument_b, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_a, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions)])
-            print(clauses[-1])
+            if DEBUG:
+                print(clauses[-1])
 
 ## Second part: semantics of def-variables
 for extension in updated_extensions:
@@ -167,7 +157,8 @@ for extension in updated_extensions:
             clauses.append([-defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),membership_SAT_variables(argument_b, extension, args, nb_updated_extensions)])
             clauses.append([-defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),r_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions)])
             clauses.append([-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions),-r_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions)])
-            print(clauses[-3:])
+            if DEBUG:
+                print(clauses[-3:])
 
 ## Third part: stability
 for extension in updated_extensions:
@@ -176,7 +167,8 @@ for extension in updated_extensions:
         for argument_b in args:
             new_clause.append(defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions))
         clauses.append(new_clause)
-        print(clauses[-1])
+        if DEBUG:
+            print(clauses[-1])
             
             
                 
@@ -186,26 +178,31 @@ time_start_enforcement = time.time()
 s = Solver(name='g4')
 for clause in clauses:
     s.add_clause(clause)
-enforcement_time = time.time() - time_start_enforcement
 
 def decode_model_as_af(model,args,nb_updated_extensions):
     result = ""
+    for argument in args:
+        result += f"arg({argument}).\n"
     for attacker in args:
         for target in args:
             if r_SAT_variables(attacker, target, extension, args, nb_updated_extensions) in model:
                 result += f"att({attacker},{target}).\n"
-            elif -r_SAT_variables(attacker, target, extension, args, nb_updated_extensions) in model:
-                print("ok")
-            else :
-                print("ERROR!")
     return result
 
+model = None
 if s.solve():
     print("SAT")
     model = s.get_model()
-    print(model)
-    print(decode_model_as_af(model,args,nb_updated_extensions))
 else:
     print("UNSAT")
+
+enforcement_time = time.time() - time_start_enforcement
+print(f"Enforcement Time = {enforcement_time}")
+    
+if model != None:
+    #print(model)
+    print(decode_model_as_af(model,args,nb_updated_extensions))
+
+
 
 s.delete()

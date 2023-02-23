@@ -3,10 +3,12 @@ import sys
 import pygarg.solvers as solvers
 import time
 from pysat.solvers import Solver
+from pysat.examples.fm import FM
+from pysat.formula import WCNF
 from encoding import *
 
-semantics_list = ["CF", "AD", "ST", "CO"]
-problems_list = ["V1s", "V1ns"]
+semantics_list = ["ST"]
+problems_list = ["V1s", "V1ns", "OptV1s", "OptV1ns"]
 formats_list = ["apx"]
 usage_message=f"Usage: python3 main.py -p <problem>-<semantics> -fo <format> -f <file> [-a <argname>]\n"
 usage_message+=f"Possible semantics: {semantics_list}\n"
@@ -62,26 +64,55 @@ if DEBUG:
     print("--------------------")
 
 target = [argname]
+############################################################################################################################################################ TARGET
+#####################################################################################################################
+target = ["B", "C"]
+#####################################################################################################################
 
 clauses = encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG) + remaining_credulously_accepted_arguments(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
-if problem == "V1s":
+if problem in ["V1s","OptV1ns"] :
     clauses += strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
 #print("Clauses = ", clauses)
 
+def decision_problem(problem):
+    return problem in ["V1s", "V1ns"]
+
+def optimization_problem(problem):
+    return problem in ["OptV1s", "OptV1ns"]
+
 time_start_enforcement = time.time()
-s = Solver(name='g4')
-for clause in clauses:
-    s.add_clause(clause)
-
-
-
 model = None
+
 SAT_result = "UNSAT"
-if s.solve():
-    SAT_result = "SAT"
-    model = s.get_model()
+
+if decision_problem(problem):
+    s = Solver(name='g4')
+    for clause in clauses:
+        s.add_clause(clause)
+        
+    if s.solve():
+        SAT_result = "SAT"
+        model = s.get_model()
+
+    s.delete()
+    
+elif optimization_problem(problem):
+    wcnf = WCNF()
+    for clause in clauses:
+        wcnf.append(clause)
+
+    soft_clauses = encode_graph_minimal_change(args, atts, nb_updated_extensions, DEBUG)
+    for soft_clause in soft_clauses:
+        wcnf.append(soft_clause, weight=1)
+
+        s = FM(wcnf, verbose = 0)
+        if s.compute():
+            SAT_result = "SAT"
+            model = s.model
+else:
+    sys.exit(f"Unsupported problem: {problem}")
 
 enforcement_time = time.time() - time_start_enforcement
 print(f"{SAT_result} - Enumeration Time = {enumeration_time} - Enforcement Time = {enforcement_time} - Total Time = {enumeration_time+enforcement_time}")
@@ -92,4 +123,3 @@ if model != None:
 
 
 
-s.delete()

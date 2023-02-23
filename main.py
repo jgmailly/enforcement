@@ -3,6 +3,7 @@ import sys
 import pygarg.solvers as solvers
 import time
 from pysat.solvers import Solver
+from encoding import *
 
 semantics_list = ["CF", "AD", "ST", "CO"]
 problems_list = ["V1s", "V1ns"]
@@ -34,19 +35,7 @@ time_start_enumeration = time.time()
 initial_extensions = solvers.extension_enumeration(args,atts,semantics)
 enumeration_time = time.time() - time_start_enumeration
 
-print(f"Enumeration Time = {enumeration_time} - Extensions = {initial_extensions} - Argument Name = {argname}")
-
-#sys.exit("end")
-
-#### SAT Variables
-# Assume we have the initial theory T = (A,R) with |A| = k.
-# x_{a_i, E_X'} -> (i-1)*k + X
-# For building the updated theory, we need:
-## r_{ai,aj} -> (m*k) + (i-1)*k + j
-# For each E_X', we need k variables:
-##### Maybe the last ones are not useful, think about it.
-## def_{bi,ai, E_X'} -> (k*m + k*k) + (i-1)*k + X
-
+#print(f"Enumeration Time = {enumeration_time} - Extensions = {initial_extensions} - Argument Name = {argname}")
 
 DEBUG = False
 
@@ -54,43 +43,17 @@ DEBUG = False
 nb_updated_extensions = 2
 updated_extensions = [x+1 for x in range(nb_updated_extensions)]
 
-def membership_SAT_variables(argument, extension, args, nb_updated_extensions):
-    # argument : argument name
-    # extension : extension index between 1 and nb_udated_extensions (included)
-    i = args.index(argument) + 1
-    return (i-1) * nb_updated_extensions + extension
-
 if DEBUG:
     print("--------------------")
     for argument in args:
         for extension in updated_extensions:
             print(f"x_({argument},{extension}) = {membership_SAT_variables(argument, extension, args, nb_updated_extensions)}")
     print("--------------------")
-
-def r_SAT_variables(attacker, target, extension, args, nb_updated_extensions):
-    m = nb_updated_extensions
-    k = len(args)
-    i = args.index(attacker) + 1
-    j = args.index(target) + 1
-    return (m * k) + (i-1)*k + j
-
-if DEBUG:
     print("--------------------")
     for attacker in args:
         for target in args:
             print(f"r_({attacker},{target}) = {r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
     print("--------------------")
-
-
-def defeat_SAT_variables(attacker, target, extension, args, nb_updated_extensions):
-    k = len(args)
-    m = nb_updated_extensions
-    i = args.index(attacker) + 1
-    j = args.index(target) + 1
-    X = extension
-    return (k*m) + (k*k) + (X-1)*k*k + (i-1)*k + j
-
-if DEBUG:
     print("--------------------")
     for X in updated_extensions:
         for attacker in args:
@@ -98,80 +61,13 @@ if DEBUG:
                 print(f"def_({attacker},{target},{X}) = {defeat_SAT_variables(attacker, target, X, args, nb_updated_extensions)}")
     print("--------------------")
 
+target = [argname]
 
-clauses = []
+clauses = encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG) + remaining_credulously_accepted_arguments(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
-
-## Clause 1 from paper
-new_clause = []
-for X in updated_extensions:
-    new_clause.append(membership_SAT_variables(argname, X, args, nb_updated_extensions))
-clauses.append(new_clause)
-if DEBUG:
-    print(clauses[-1])
-
-def is_credulously_accepted(argument, initial_extensions):
-    for extension in initial_extensions:
-        if argument in extension:
-            return True
-    return False
-
-def is_skeptically_accepted(argument, initial_extensions):
-    for extension in initial_extensions:
-        if argument not in extension:
-            return False
-    return True
-
-# Clauses 2 from paper
-for argument in args:
-    if is_credulously_accepted(argument, initial_extensions):
-        new_clause = []
-        for X in updated_extensions:
-            new_clause.append(membership_SAT_variables(argument, X, args, nb_updated_extensions))
-        clauses.append(new_clause)
-        if DEBUG:
-            print(clauses[-1])
-
-# Clauses 3 from paper, only for strict
 if problem == "V1s":
-    for argument in args:
-        if (argument != argname) and (not is_credulously_accepted(argument, initial_extensions)):
-            for X in updated_extensions:
-                clauses.append([-membership_SAT_variables(argument, X, args, nb_updated_extensions)])
-                if DEBUG:
-                    print(clauses[-1])
+    clauses += strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
-# Clauses from Extension enforcement by Niskanen et al
-## First part: conflict-freeness
-for extension in updated_extensions:
-    for argument_a in args:
-        for argument_b in args:
-            clauses.append([-r_SAT_variables(argument_a, argument_b, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_a, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions)])
-            if DEBUG:
-                print(clauses[-1])
-
-## Second part: semantics of def-variables
-for extension in updated_extensions:
-    for argument_a in args:
-        for argument_b in args:
-            clauses.append([-defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),membership_SAT_variables(argument_b, extension, args, nb_updated_extensions)])
-            clauses.append([-defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),r_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions)])
-            clauses.append([-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions),-r_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions)])
-            if DEBUG:
-                print(clauses[-3:])
-
-## Third part: stability
-for extension in updated_extensions:
-    for argument_a in args:
-        new_clause = [membership_SAT_variables(argument_a, extension, args, nb_updated_extensions)]
-        for argument_b in args:
-            new_clause.append(defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions))
-        clauses.append(new_clause)
-        if DEBUG:
-            print(clauses[-1])
-            
-            
-                
 #print("Clauses = ", clauses)
 
 time_start_enforcement = time.time()
@@ -179,25 +75,16 @@ s = Solver(name='g4')
 for clause in clauses:
     s.add_clause(clause)
 
-def decode_model_as_af(model,args,nb_updated_extensions):
-    result = ""
-    for argument in args:
-        result += f"arg({argument}).\n"
-    for attacker in args:
-        for target in args:
-            if r_SAT_variables(attacker, target, extension, args, nb_updated_extensions) in model:
-                result += f"att({attacker},{target}).\n"
-    return result
+
 
 model = None
+SAT_result = "UNSAT"
 if s.solve():
-    print("SAT")
+    SAT_result = "SAT"
     model = s.get_model()
-else:
-    print("UNSAT")
 
 enforcement_time = time.time() - time_start_enforcement
-print(f"Enforcement Time = {enforcement_time}")
+print(f"{SAT_result} - Enumeration Time = {enumeration_time} - Enforcement Time = {enforcement_time} - Total Time = {enumeration_time+enforcement_time}")
     
 if model != None:
     #print(model)

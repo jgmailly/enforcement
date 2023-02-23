@@ -39,10 +39,10 @@ enumeration_time = time.time() - time_start_enumeration
 
 #print(f"Enumeration Time = {enumeration_time} - Extensions = {initial_extensions} - Argument Name = {argname}")
 
-DEBUG = False
+DEBUG = True
 
 # m
-nb_updated_extensions = 2
+nb_updated_extensions = 1
 updated_extensions = [x+1 for x in range(nb_updated_extensions)]
 
 if DEBUG:
@@ -66,12 +66,13 @@ if DEBUG:
 target = [argname]
 ############################################################################################################################################################ TARGET
 #####################################################################################################################
-target = ["B", "C"]
+#target = ["B", "C"]
 #####################################################################################################################
+neg_target = ["A"]
 
-clauses = encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG) + remaining_credulously_accepted_arguments(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
+clauses = encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG) + encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG) + remaining_credulously_accepted_arguments(args, neg_target, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
-if problem in ["V1s","OptV1ns"] :
+if problem in ["V1s","OptV1s"] :
     clauses += strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
 #print("Clauses = ", clauses)
@@ -118,7 +119,8 @@ enforcement_time = time.time() - time_start_enforcement
 print(f"{SAT_result} - Enumeration Time = {enumeration_time} - Enforcement Time = {enforcement_time} - Total Time = {enumeration_time+enforcement_time}")
     
 if model != None:
-    #print(model)
+    if DEBUG:
+        print(model)
     print(decode_model_as_af(model,args,nb_updated_extensions))
 
 

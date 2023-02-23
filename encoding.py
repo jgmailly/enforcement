@@ -31,36 +31,61 @@ def defeat_SAT_variables(attacker, target, extension, args, nb_updated_extension
     X = extension
     return (k*m) + (k*k) + (X-1)*k*k + (i-1)*k + j
 
-### Encode target
+### Encode POSITIVE target
 def encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG=False):
+    if DEBUG:
+        print("-- Positive target")
     ## Clause 1 from paper, one for each argument in the target
     clauses = []
     for argname in target:
         new_clause = []
         for X in updated_extensions:
             new_clause.append(membership_SAT_variables(argname, X, args, nb_updated_extensions))
-            clauses.append(new_clause)
+        clauses.append(new_clause)
+        if DEBUG:
+            print(clauses[-1])
+    if DEBUG:
+        print("--")
+    return clauses
+
+### Encode NEGATIVE target
+def encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG=False):
+    ## Not in the paper yet. For each argument in the negative target, and each extension, add one unit clause to say that the argument is not in the extension
+    if DEBUG:
+        print("-- Negative target")
+    clauses = []
+    for argname in neg_target:
+        for X in updated_extensions:
+            clauses.append([-membership_SAT_variables(argname, X, args, nb_updated_extensions)])
             if DEBUG:
                 print(clauses[-1])
+    if DEBUG:
+        print("--")
     return clauses
 
 ### Encode remaining credulously accepted arguments
-def remaining_credulously_accepted_arguments(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG=False):
+def remaining_credulously_accepted_arguments(args, neg_target, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG=False):
+    if DEBUG:
+        print("-- Credulously accepted arguments remains")
     clauses = []
     # Clauses 2 from paper
     for argument in args:
-        if is_credulously_accepted(argument, initial_extensions):
+        if (argument not in neg_target) and is_credulously_accepted(argument, initial_extensions):
             new_clause = []
             for X in updated_extensions:
                 new_clause.append(membership_SAT_variables(argument, X, args, nb_updated_extensions))
             clauses.append(new_clause)
             if DEBUG:
                 print(clauses[-1])
+    if DEBUG:
+        print("--")
     return clauses
 
 ### Encode strict version
 def strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG=False):
     # Clauses 3 from paper, only for strict
+    if DEBUG:
+        print("-- Strict version: no new credulously accepted argument")    
     clauses = []
     for argument in args:
         if (argument not in target) and (not is_credulously_accepted(argument, initial_extensions)):
@@ -68,12 +93,16 @@ def strict_version(target, args, nb_updated_extensions, updated_extensions, init
                 clauses.append([-membership_SAT_variables(argument, X, args, nb_updated_extensions)])
                 if DEBUG:
                     print(clauses[-1])
+    if DEBUG:
+        print("--")
     return clauses
 
 
 # Clauses from Extension enforcement by Niskanen et al
 def encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG=False):
     ## First part: conflict-freeness
+    if DEBUG:
+        print("-- Conflict-freeness")
     clauses = []
     for extension in updated_extensions:
         for argument_a in args:
@@ -81,10 +110,14 @@ def encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, in
                 clauses.append([-r_SAT_variables(argument_a, argument_b, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_a, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions)])
                 if DEBUG:
                     print(clauses[-1])
+    if DEBUG:
+        print("--")
     return clauses
 
 def encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG=False):
     ## Second part: semantics of def-variables
+    if DEBUG:
+        print("-- def variables")
     clauses = []
     for extension in updated_extensions:
         for argument_a in args:
@@ -94,10 +127,14 @@ def encode_def_variables(args, nb_updated_extensions, updated_extensions, initia
                 clauses.append([-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions),-r_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions)])
                 if DEBUG:
                     print(clauses[-3:])
+    if DEBUG:
+        print("--")
     return clauses
 
 def encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG=False):
     ## Third part: stability
+    if DEBUG:
+        print("-- Stability")
     clauses = []
     for extension in updated_extensions:
         for argument_a in args:
@@ -107,6 +144,8 @@ def encode_stability(args, nb_updated_extensions, updated_extensions, initial_ex
             clauses.append(new_clause)
             if DEBUG:
                 print(clauses[-1])
+    if DEBUG:
+        print("--")
     return clauses
 
 

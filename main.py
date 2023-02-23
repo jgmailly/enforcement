@@ -96,6 +96,7 @@ def defeat_SAT_variables(attacker, target, extension, args, nb_updated_extension
     m = nb_updated_extensions
     i = args.index(attacker) + 1
     j = args.index(target) + 1
+    X = extension
     return (k*m) + (k*k) + (X-1)*k*k + (i-1)*k + j
 
 print("--------------------")
@@ -106,7 +107,7 @@ for X in updated_extensions:
 #            m = nb_updated_extensions
 #            i = args.index(attacker) + 1
 #            j = args.index(target) + 1
-            print(f"def_({attacker},{target},{X}) = {defeat_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
+            print(f"def_({attacker},{target},{X}) = {defeat_SAT_variables(attacker, target, X, args, nb_updated_extensions)}")
 print("--------------------")
 
 
@@ -151,30 +152,33 @@ if problem == "V1s":
 
 ###### TO DO
 ######### CORRECT THE LAST PART WITH NEW VARIABLES
-                
 # Clauses from Extension enforcement by Niskanen et al
+## First part: conflict-freeness
 for extension in updated_extensions:
-    # Arguments from the extension must be in the target for enforcement
-    for argument in args:
-        clauses.append([membership_SAT_variables(argument, extension, args, nb_updated_extensions), -x_SAT_variables(argument, extension, args, nb_updated_extensions)])
+    for argument_a in args:
+        for argument_b in args:
+            clauses.append([-r_SAT_variables(argument_a, argument_b, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_a, extension, args, nb_updated_extensions),-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions)])
+            print(clauses[-1])
+
+## Second part: semantics of def-variables
+for extension in updated_extensions:
+    for argument_a in args:
+        for argument_b in args:
+            clauses.append([-defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),membership_SAT_variables(argument_b, extension, args, nb_updated_extensions)])
+            clauses.append([-defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),r_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions)])
+            clauses.append([-membership_SAT_variables(argument_b, extension, args, nb_updated_extensions),-r_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions),defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions)])
+            print(clauses[-3:])
+
+## Third part: stability
+for extension in updated_extensions:
+    for argument_a in args:
+        new_clause = [membership_SAT_variables(argument_a, extension, args, nb_updated_extensions)]
+        for argument_b in args:
+            new_clause.append(defeat_SAT_variables(argument_b, argument_a, extension, args, nb_updated_extensions))
+        clauses.append(new_clause)
         print(clauses[-1])
-    # Arguments that are forbidden in the extension must not be in the target for enforcement
-    for argument in args:
-        clauses.append([-membership_SAT_variables(argument, extension, args, nb_updated_extensions), x_SAT_variables(argument, extension, args, nb_updated_extensions)])
-        print(clauses[-1])
-    # These clauses enforce conflict-freeness of the target for enforcement    
-    for attacker in args:
-        for target in args:
-            clauses.append([-r_SAT_variables(attacker, target, extension, args, nb_updated_extensions), -x_SAT_variables(attacker, extension, args, nb_updated_extensions),-x_SAT_variables(target, extension, args, nb_updated_extensions)])
-            print(clauses[-1])
-    # These clauses enforce stability of the target for enforcement
-    for argument in args:
-        for other_argument in args:
-            clauses.append([x_SAT_variables(argument, extension, args, nb_updated_extensions),x_SAT_variables(other_argument, extension, args, nb_updated_extensions)])
-            print(clauses[-1])
-            clauses.append([x_SAT_variables(argument, extension, args, nb_updated_extensions),r_SAT_variables(other_argument, argument, extension, args, nb_updated_extensions)])
-            print(clauses[-1])
-    
+            
+            
                 
 #print("Clauses = ", clauses)
 

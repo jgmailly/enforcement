@@ -31,6 +31,7 @@ if semantics not in semantics_list:
     sys.exit(f"Semantics {semantics} not recognized. Supported problems: {semantics_list}.")
 
 args, atts = parser.parse(apx_file)
+args.append("KILLER")
 nb_args = len(args)
 
 time_start_enumeration = time.time()

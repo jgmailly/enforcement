@@ -6,9 +6,13 @@ from util import *
 # x_{a_i, E_X'} -> (i-1)*k + X
 # For building the updated theory, we need:
 ## r_{ai,aj} -> (m*k) + (i-1)*k + j
-# For each E_X', we need k variables:
-##### Maybe the last ones are not useful, think about it.
+##### To simplify the formulas, we add a variable for each combination b_i, a_i E_X',
+##### which is true if b_i attacks a_i and b_i belongs to the extension E_X'
+##### Intuition: b_i defeats a_i in the extension E_X'
 ## def_{bi,ai, E_X'} -> (k*m + k*k) + (i-1)*k + X
+
+       
+
 
 def membership_SAT_variables(argument, extension, args, nb_updated_extensions):
     # argument : argument name
@@ -31,6 +35,16 @@ def defeat_SAT_variables(attacker, target, extension, args, nb_updated_extension
     X = extension
     return (k*m) + (k*k) + (X-1)*k*k + (i-1)*k + j
 
+### We assume that the last argument in the list is the "negative target killer".
+def get_negative_target_killer(args):
+    return args[-1]
+
+def encode_killer_unattacked(args, nb_updated_extensions):
+    killer = get_negative_target_killer(args)
+    clauses = []
+    for other_arg in args:
+        clauses.append([-r_SAT_variables(other_arg, killer, 1, args, nb_updated_extensions)])
+
 ### Encode POSITIVE target
 def encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG=False):
     if DEBUG:
@@ -50,7 +64,7 @@ def encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG=
 
 ### Encode NEGATIVE target
 def encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG=False):
-    ## Not in the paper yet. For each argument in the negative target, and each extension, add one unit clause to say that the argument is not in the extension
+    ## Not in the paper yet. For each argument in the negative target, and each extension, add one unit clause to say that the argument is not in the extension, and the unit clause saying that the killer argument attacks the target
     if DEBUG:
         print("-- Negative target")
     clauses = []
@@ -59,6 +73,19 @@ def encode_negative_target(neg_target,args, nb_updated_extensions, updated_exten
             clauses.append([-membership_SAT_variables(argname, X, args, nb_updated_extensions)])
             if DEBUG:
                 print(clauses[-1])
+        killer = get_negative_target_killer(args)
+        clauses.append([r_SAT_variables(killer, argname, 1, args, nb_updated_extensions)])
+        if DEBUG:
+            print(clauses[-1])
+
+    ## The killer only attacks the arguments in the negative target
+    for argname in args:
+        if argname not in neg_target:
+            killer = get_negative_target_killer(args)
+            clauses.append([-r_SAT_variables(killer, argname, 1, args, nb_updated_extensions)])
+            if DEBUG:
+                print(clauses[-1])
+
     if DEBUG:
         print("--")
     return clauses

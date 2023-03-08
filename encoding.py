@@ -39,12 +39,22 @@ def defeat_SAT_variables(attacker, target, extension, args, nb_updated_extension
 def get_negative_target_killer(args):
     return args[-1]
 
+
+####### THIS SHOULD NOT BE USED
 def encode_killer_unattacked(args, nb_updated_extensions):
     killer = get_negative_target_killer(args)
     clauses = []
     for other_arg in args:
         clauses.append([-r_SAT_variables(other_arg, killer, 1, args, nb_updated_extensions)])
+    return clauses
 
+def encode_killer_does_not_attack(args, nb_updated_extensions):
+    killer = get_negative_target_killer(args)
+    clauses = []
+    for other_arg in args:
+        clauses.append([-r_SAT_variables(killer, other_arg, 1, args, nb_updated_extensions)])
+    return clauses
+        
 ### Encode POSITIVE target
 def encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG=False):
     if DEBUG:
@@ -64,27 +74,33 @@ def encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG=
 
 ### Encode NEGATIVE target
 def encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG=False):
-    ## Not in the paper yet. For each argument in the negative target, and each extension, add one unit clause to say that the argument is not in the extension, and the unit clause saying that the killer argument attacks the target
+    ## Not in the paper yet. For each argument in the negative target, and each extension, add one unit clause to say that the argument is not in the extension, and the unit clause saying that the killer argument is attacked the target
     if DEBUG:
         print("-- Negative target")
     clauses = []
+    clauses += encode_killer_does_not_attack(args, nb_updated_extensions)
     for argname in neg_target:
         for X in updated_extensions:
             clauses.append([-membership_SAT_variables(argname, X, args, nb_updated_extensions)])
             if DEBUG:
                 print(clauses[-1])
         killer = get_negative_target_killer(args)
-        clauses.append([r_SAT_variables(killer, argname, 1, args, nb_updated_extensions)])
+        clauses.append([r_SAT_variables(argname, killer, 1, args, nb_updated_extensions)])
         if DEBUG:
             print(clauses[-1])
 
-    ## The killer only attacks the arguments in the negative target
+    ## The killer is only attacked the arguments in the negative target
     for argname in args:
         if argname not in neg_target:
             killer = get_negative_target_killer(args)
-            clauses.append([-r_SAT_variables(killer, argname, 1, args, nb_updated_extensions)])
+            clauses.append([-r_SAT_variables(argname, killer, 1, args, nb_updated_extensions)])
             if DEBUG:
                 print(clauses[-1])
+
+    ## The killer must be in each extension
+    for X in updated_extensions:
+        killer = get_negative_target_killer(args)
+        clauses.append([membership_SAT_variables(killer, X, args, nb_updated_extensions)])
 
     if DEBUG:
         print("--")
@@ -195,6 +211,7 @@ def encode_graph_minimal_change(args, atts, nb_updated_extensions, DEBUG=False):
     return clauses
 
 ##### Decoding
+## Returns a apx-string corresponding to the AF encoded in the model
 def decode_model_as_af(model,args,nb_updated_extensions):
     result = ""
     for argument in args:
@@ -204,3 +221,12 @@ def decode_model_as_af(model,args,nb_updated_extensions):
             if r_SAT_variables(attacker, target, 1, args, nb_updated_extensions) in model:
                 result += f"att({attacker},{target}).\n"
     return result
+
+## Returns a list of args and list of atts corresponding to the AF encoded in the model
+def decode_model_as_af_struct(model,args,nb_updated_extensions):
+    atts = []
+    for attacker in args:
+        for target in args:
+            if r_SAT_variables(attacker, target, 1, args, nb_updated_extensions) in model:
+                atts.append([attacker,target])
+    return args, atts

@@ -89,6 +89,21 @@ model = None
 
 SAT_result = "UNSAT"
 
+#### Returns True iff the current model is a counter-example, i.e. some arguments in the negative target are credulously accepted
+def check_counterexample(model, args, neg_target, nb_updated_extensions,semantics):
+    args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
+    for neg_arg in neg_target:
+        if solvers.credulous_acceptability(args,atts,neg_arg,semantics):
+            return True
+    return False
+
+### Returns the clause corresponding to the negation of a model
+def forbid_model(model):
+    clause = []
+    for literal in model:
+        clause.append(-literal)
+    return clause
+
 if decision_problem(problem):
     s = Solver(name='g4')
     for clause in clauses:
@@ -108,11 +123,19 @@ elif optimization_problem(problem):
     soft_clauses = encode_graph_minimal_change(args, atts, nb_updated_extensions, DEBUG)
     for soft_clause in soft_clauses:
         wcnf.append(soft_clause, weight=1)
-
+        
+    s = FM(wcnf, verbose = 0)
+    if s.compute():
+        SAT_result = "SAT"
+        model = s.model
+    s.delete()
+    while model != None and check_counterexample(model, args, neg_target, nb_updated_extensions,semantics):
+        wcnf.append(forbid_model(model))
         s = FM(wcnf, verbose = 0)
         if s.compute():
             SAT_result = "SAT"
             model = s.model
+        s.delete()
 else:
     sys.exit(f"Unsupported problem: {problem}")
 

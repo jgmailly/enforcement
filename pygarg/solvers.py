@@ -44,6 +44,22 @@ def credulous_acceptability(args,atts,argname,semantics):
     s.delete()
     return False
 
+def credulous_acceptability_set(args,atts,conjunct,semantics):
+    n_vars, clauses = get_encoding(args, atts,semantics)
+
+    s = Solver(name='g4')
+    for clause in clauses:
+        s.add_clause(clause)
+
+    for argname in conjunct:
+        s.add_clause([encoding.sat_var_from_arg_name(argname, args)])
+
+    if s.solve():
+        s.delete()
+        return True
+    s.delete()
+    return False
+
 def skeptical_acceptability(args,atts,argname,semantics):
     n_vars, clauses = get_encoding(args, atts,semantics)
     arg_var = encoding.sat_var_from_arg_name(argname, args)
@@ -53,6 +69,25 @@ def skeptical_acceptability(args,atts,argname,semantics):
         s.add_clause(clause)
         
     s.add_clause([-arg_var])
+    
+    if s.solve():
+        s.delete()
+        return False
+    s.delete()
+    return True
+
+def skeptical_acceptability_set(args,atts,conjunct,semantics):
+    n_vars, clauses = get_encoding(args, atts,semantics)
+
+
+    s = Solver(name='g4')
+    for clause in clauses:
+        s.add_clause(clause)
+
+    new_clause = []
+    for argname in conjunct:
+        new_clause.append(-encoding.sat_var_from_arg_name(argname, args))
+    s.add_clause(new_clause)
     
     if s.solve():
         s.delete()

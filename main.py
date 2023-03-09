@@ -70,6 +70,8 @@ target = [argname]
 #target = ["B", "C"]
 #####################################################################################################################
 neg_target = ["A"]
+conjunctive_positive = []
+conjunctive_negative = []
 
 clauses = encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG) + encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG) + remaining_credulously_accepted_arguments(args, neg_target, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
@@ -94,6 +96,24 @@ def check_counterexample(model, args, neg_target, nb_updated_extensions,semantic
     args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
     for neg_arg in neg_target:
         if solvers.credulous_acceptability(args,atts,neg_arg,semantics):
+            return True
+    return False
+
+#### Returns True iff the current model is a counter-example for the conjunctive positive targets,
+#### i.e. some set of arguments should appear together in an extension but its not the case
+def check_counterexample_cunjunctive_positive(model, args, conjunctive_positive, nb_updated_extensions, semantics):
+    args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
+    for conjunct in conjunctive_positive:
+        if ! solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
+            return True
+    return False
+
+#### Returns True iff the current model is a counter-example for the conjunctive negative targets,
+#### i.e. some set of arguments should not appear together in an extension but they do
+def check_counterexample_cunjunctive_positive(model, args, conjunctive_negative, nb_updated_extensions, semantics):
+    args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
+    for conjunct in conjunctive_negative:
+        if solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
             return True
     return False
 
@@ -129,7 +149,7 @@ elif optimization_problem(problem):
         SAT_result = "SAT"
         model = s.model
     s.delete()
-    while model != None and check_counterexample(model, args, neg_target, nb_updated_extensions,semantics):
+    while model != None and check_counterexample(model, args, neg_target, nb_updated_extensions,semantics) and check_counterexample_cunjunctive_positive(model, args, conjunctive_negative, nb_updated_extensions, semantics) and check_counterexample_cunjunctive_negative(model, args, conjunctive_negative, nb_updated_extensions, semantics):
         wcnf.append(forbid_model(model))
         s = FM(wcnf, verbose = 0)
         if s.compute():

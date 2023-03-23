@@ -6,6 +6,7 @@ from pysat.solvers import Solver
 from pysat.examples.fm import FM
 from pysat.formula import WCNF
 from encoding import *
+import util
 
 import argparse
 
@@ -52,7 +53,7 @@ enumeration_time = time.time() - time_start_enumeration
 
 #print(f"Enumeration Time = {enumeration_time} - Extensions = {initial_extensions} - Argument Name = {argname}")
 
-DEBUG = True
+DEBUG = False
 
 # m
 nb_updated_extensions = 1
@@ -76,15 +77,18 @@ if DEBUG:
                 print(f"def_({attacker},{target},{X}) = {defeat_SAT_variables(attacker, target, X, args, nb_updated_extensions)}")
     print("--------------------")
 
-target = [argname]
+#target = [argname]
 ############################################################################################################################################################ TARGET
 #####################################################################################################################
 #target = ["B", "C"]
 #####################################################################################################################
 #neg_target = ["A"]
-neg_target = []
-conjunctive_positive = []
-conjunctive_negative = []
+target, neg_target, conjunctive_positive, conjunctive_negative = util.parse_query_file(cli_args.query_file)
+
+print(f"target = {target}")
+print(f"neg_target = {neg_target}")
+print(f"conjunctive_positive = {conjunctive_positive}")
+print(f"conjunctive_negative = {conjunctive_negative}")
 
 clauses = encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG) + encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG) + remaining_credulously_accepted_arguments(args, neg_target, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG) + encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 

@@ -7,19 +7,31 @@ from pysat.examples.fm import FM
 from pysat.formula import WCNF
 from encoding import *
 
+import argparse
+
 semantics_list = ["ST"]
 problems_list = ["V1s", "V1ns", "OptV1s", "OptV1ns"]
 formats_list = ["apx"]
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument("af_file",help="the file containing the initial AF")
+argparser.add_argument("query_file", help="the file containing the enforcement query")
+argparser.add_argument("-v", "--verbose", help="increase output verbosity", action="store_true")
+argparser.add_argument("-p", "--problem", help=f"the pair XX-YY with XX in {problems_list} and YY in {semantics_list}")
+argparser.add_argument("-fo", "--format", help=f"the format of the AF file in {formats_list}", default="apx")
+cli_args = argparser.parse_args()
+
+if cli_args.problem == None:
+    sys.exit("Missing CLI parameter -p")
+
 usage_message=f"Usage: python3 main.py -p <problem>-<semantics> -fo <format> -f <file> [-a <argname>]\n"
 usage_message+=f"Possible semantics: {semantics_list}\n"
 usage_message+=f"Possible problems: {problems_list}\n"
 usage_message+=f"Possible formats: {formats_list}\n"
 
-argname = ""
-if len(sys.argv) > 7:
-    argname = sys.argv[8]
-apx_file = sys.argv[6]
-task = sys.argv[2]
+argname = "A"
+apx_file = cli_args.af_file
+task = cli_args.problem
 split_task = task.split("-")
 problem = split_task[0]
 semantics = split_task[1]
@@ -69,7 +81,8 @@ target = [argname]
 #####################################################################################################################
 #target = ["B", "C"]
 #####################################################################################################################
-neg_target = ["A"]
+#neg_target = ["A"]
+neg_target = []
 conjunctive_positive = []
 conjunctive_negative = []
 
@@ -104,7 +117,7 @@ def check_counterexample(model, args, neg_target, nb_updated_extensions,semantic
 def check_counterexample_cunjunctive_positive(model, args, conjunctive_positive, nb_updated_extensions, semantics):
     args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
     for conjunct in conjunctive_positive:
-        if ! solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
+        if not solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
             return True
     return False
 

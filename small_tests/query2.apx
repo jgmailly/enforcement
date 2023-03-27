@@ -1,0 +1,2 @@
+neg_target(delta1).
+pos_conjunct(delta2,delta3).

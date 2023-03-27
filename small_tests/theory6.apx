@@ -1,0 +1,9 @@
+arg(alpha1).
+arg(alpha2).
+arg(alpha3).
+arg(delta1).
+arg(delta2).
+att(alpha1,delta2).
+att(alpha2,delta1).
+att(delta1,delta2).
+att(delta2,delta1).

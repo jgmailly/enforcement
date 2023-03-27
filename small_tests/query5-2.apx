@@ -1,0 +1,2 @@
+target(delta1).
+neg_conjunct(delta1,delta2).

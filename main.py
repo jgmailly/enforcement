@@ -1,12 +1,15 @@
 import pygarg.parser as parser
 import sys
-import pygarg.solvers as solvers
 import time
+
+import pygarg.solvers as solvers
+
 from pysat.solvers import Solver
 from pysat.examples.fm import FM
 from pysat.formula import WCNF
 from pysat.card import *
-from encoding import *
+
+import credulous_encoding
 import util
 
 import argparse
@@ -85,13 +88,13 @@ if cli_args.verbose:
     print(f"conjunctive_positive = {conjunctive_positive}")
     print(f"conjunctive_negative = {conjunctive_negative}")
 
-clauses = encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG)
-clauses += encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG)
-clauses += remaining_credulously_accepted_arguments(args, neg_target, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
-clauses += encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
-clauses += encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
-clauses += encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
-clauses += encode_no_self_attacks(args,atts,1, nb_updated_extensions)
+clauses = credulous_encoding.encode_target(target,args, nb_updated_extensions, updated_extensions, DEBUG)
+clauses += credulous_encoding.encode_negative_target(neg_target,args, nb_updated_extensions, updated_extensions, DEBUG)
+clauses += credulous_encoding.remaining_credulously_accepted_arguments(args, neg_target, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
+clauses += credulous_encoding.encode_conflict_freeness(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
+clauses += credulous_encoding.encode_def_variables(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
+clauses += credulous_encoding.encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
+clauses += credulous_encoding.encode_no_self_attacks(args,atts,1, nb_updated_extensions)
 
 if False: #cli_args.bounded != None:
     print(f"bound = {cli_args.bounded}")
@@ -110,7 +113,7 @@ if False: #cli_args.bounded != None:
     #clauses += card_constraint.clauses
 
 if problem in ["V1s","OptV1s"] :
-    clauses += strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
+    clauses += credulous_encoding.strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
 
 
@@ -125,32 +128,7 @@ model = None
 
 SAT_result = "UNSAT"
 
-#### Returns True iff the current model is a counter-example, i.e. some arguments in the negative target are credulously accepted
-def check_counterexample_negative_target(model, args, neg_target, nb_updated_extensions,semantics):
-    args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
-    for neg_arg in neg_target:
-        if solvers.credulous_acceptability(args,atts,neg_arg,semantics):
-            return True
-    return False
 
-#### Returns True iff the current model is a counter-example for the conjunctive positive targets,
-#### i.e. some set of arguments should appear together in an extension but its not the case
-def check_counterexample_conjunctive_positive(model, args, conjunctive_positive, nb_updated_extensions, semantics):
-    args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
-    for conjunct in conjunctive_positive:
-        if not solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
-            print(f"Conjunct {conjunct} is not credulously accepted")
-            return True
-    return False
-
-#### Returns True iff the current model is a counter-example for the conjunctive negative targets,
-#### i.e. some set of arguments should not appear together in an extension but they do
-def check_counterexample_conjunctive_negative(model, args, conjunctive_negative, nb_updated_extensions, semantics):
-    args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
-    for conjunct in conjunctive_negative:
-        if solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
-            return True
-    return False
 
 ### Returns the clause corresponding to the negation of a model
 def forbid_model(model):
@@ -178,7 +156,7 @@ elif optimization_problem(problem):
     for clause in clauses:
         wcnf.append(clause)
 
-    soft_clauses = encode_graph_minimal_change(args, atts, nb_updated_extensions, DEBUG)
+    soft_clauses = credulous_encoding.encode_graph_minimal_change(args, atts, nb_updated_extensions, DEBUG)
     for soft_clause in soft_clauses:
         wcnf.append(soft_clause, weight=1)
         
@@ -189,7 +167,8 @@ elif optimization_problem(problem):
         solution_cost = s.cost
     s.delete()
     nbModels = 1
-    while model != None and (check_counterexample_negative_target(model, args, neg_target, nb_updated_extensions,semantics) or check_counterexample_conjunctive_positive(model, args, conjunctive_positive, nb_updated_extensions, semantics) or check_counterexample_conjunctive_negative(model, args, conjunctive_negative, nb_updated_extensions, semantics)):
+    #while model != None and (check_counterexample_negative_target(model, args, neg_target, nb_updated_extensions,semantics) or check_counterexample_conjunctive_positive(model, args, conjunctive_positive, nb_updated_extensions, semantics) or check_counterexample_conjunctive_negative(model, args, conjunctive_negative, nb_updated_extensions, semantics)):
+    while model != None and credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics):
         wcnf.append(forbid_model(model))
         nbModels += 1
         s = FM(wcnf, verbose = 0)
@@ -215,10 +194,10 @@ if model != None:
     if DEBUG:
         print(model)
     if cli_args.output == None:
-        print(decode_model_as_af(model,args,nb_updated_extensions))
+        print(credulous_encoding.decode_model_as_af(model,args,nb_updated_extensions))
     else:
         with open(cli_args.output, 'w') as output_file:
-            print(decode_model_as_af(model,args,nb_updated_extensions), file = output_file)
+            print(credulous_encoding.decode_model_as_af(model,args,nb_updated_extensions), file = output_file)
 
 
 

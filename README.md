@@ -47,11 +47,17 @@ optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose         increase output verbosity
   -p PROBLEM, --problem PROBLEM
-                        the pair XX-YY with XX in ['V1s', 'V1ns', 'OptV1s', 'OptV1ns'] and YY in ['ST']
+                        the pair XX-YY with XX in ['CEnfS', 'CEnfNS', 'OptCEnfS', 'OptCEnfNS'] and YY in ['ST']
   -fo FORMAT, --format FORMAT
-                        the format of the AF file in ['apx']
+                        the format of the AF file in ['apx'] (default: apx)
   -o OUTPUT, --output OUTPUT
-                        the output file for printing the new theory
+                        the output file for printing the new theory (the standard output is used if this option is not set)
   -ne NEXTENSIONS, --nextensions NEXTENSIONS
-                        the expected number of extensions for the updated AF
+                        the expected number of extensions for the updated AF (default: the number of extensions of the initial AF)
 ```
+In the description of the problem,
+- `C` (respectively `S`) means *C*redulous (respectively *S*keptical, not
+available yet),
+- `Enf` means *Enf*orcement,
+- `S` (respectively `NS`) means *S*trict (respectively *N*on-*S*trict),
+- `Opt` means *Opt*imal.

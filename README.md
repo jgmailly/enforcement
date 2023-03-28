@@ -37,7 +37,7 @@ neg_target line, but several pos_conjunct or neg_conjunct lines are possible. Th
 ## Command line interface
 Here is the help message of the current version:
 ```bash
-usage: main.py [-h] [-v] [-p PROBLEM] [-fo FORMAT] af_file query_file
+usage: main.py [-h] [-v] [-p PROBLEM] [-fo FORMAT] [-o OUTPUT] [-ne NEXTENSIONS] af_file query_file
 
 positional arguments:
   af_file               the file containing the initial AF
@@ -50,4 +50,8 @@ optional arguments:
                         the pair XX-YY with XX in ['V1s', 'V1ns', 'OptV1s', 'OptV1ns'] and YY in ['ST']
   -fo FORMAT, --format FORMAT
                         the format of the AF file in ['apx']
+  -o OUTPUT, --output OUTPUT
+                        the output file for printing the new theory
+  -ne NEXTENSIONS, --nextensions NEXTENSIONS
+                        the expected number of extensions for the updated AF
 ```

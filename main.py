@@ -15,7 +15,7 @@ import util
 import argparse
 
 semantics_list = ["ST"]
-problems_list = ["V1s", "V1ns", "OptV1s", "OptV1ns"]
+problems_list = ["CEnfS", "CEnfNS", "OptCEnfS", "OptCEnfNS"]
 formats_list = ["apx"]
 
 argparser = argparse.ArgumentParser()
@@ -25,7 +25,7 @@ argparser.add_argument("-v", "--verbose", help="increase output verbosity", acti
 argparser.add_argument("-p", "--problem", help=f"the pair XX-YY with XX in {problems_list} and YY in {semantics_list}")
 argparser.add_argument("-fo", "--format", help=f"the format of the AF file in {formats_list}", default="apx")
 argparser.add_argument("-o", "--output", help="the output file for printing the new theory")
-argparser.add_argument("-ne", "--nextensions", help="the expected number of extensions for the updated AF")
+argparser.add_argument("-ne", "--nextensions", help="the expected number of extensions for the updated AF (default value: the number of extensions of the initial theory")
 #argparser.add_argument("-bo", "--bounded", help="the threshold for bounded enforcement")
 cli_args = argparser.parse_args()
 
@@ -112,16 +112,18 @@ if False: #cli_args.bounded != None:
     print(f"card_constraint.clauses = {card_constraint.clauses}")
     #clauses += card_constraint.clauses
 
-if problem in ["V1s","OptV1s"] :
-    clauses += credulous_encoding.strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
-
+def strict_problem(problem):
+    return problem in ["CEnfS", "OptCEnfS"] 
 
 def decision_problem(problem):
-    return problem in ["V1s", "V1ns"]
+    return problem in ["CEnfS", "CEnfNS"]
 
 def optimization_problem(problem):
-    return problem in ["OptV1s", "OptV1ns"]
+    return problem in ["OptCEnfS", "OptCEnfNS"]
+
+if strict_problem(problem) :
+    clauses += credulous_encoding.strict_version(target, args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 
 time_start_enforcement = time.time()
 model = None
@@ -166,11 +168,8 @@ elif optimization_problem(problem):
         model = s.model
         solution_cost = s.cost
     s.delete()
-    nbModels = 1
-    #while model != None and (check_counterexample_negative_target(model, args, neg_target, nb_updated_extensions,semantics) or check_counterexample_conjunctive_positive(model, args, conjunctive_positive, nb_updated_extensions, semantics) or check_counterexample_conjunctive_negative(model, args, conjunctive_negative, nb_updated_extensions, semantics)):
     while model != None and credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics):
         wcnf.append(forbid_model(model))
-        nbModels += 1
         s = FM(wcnf, verbose = 0)
         SAT_result = "UNSAT"
         solution_cost = None

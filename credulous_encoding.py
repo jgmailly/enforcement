@@ -218,7 +218,6 @@ def check_counterexample_conjunctive_positive(model, args, conjunctive_positive,
     args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
     for conjunct in conjunctive_positive:
         if not solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
-            print(f"Conjunct {conjunct} is not credulously accepted")
             return True
     return False
 

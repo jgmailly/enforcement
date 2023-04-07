@@ -134,6 +134,7 @@ SAT_result = "UNSAT"
 
 ### Returns the clause corresponding to the negation of a model
 def forbid_model(model):
+    print(f"model = {model}")
     clause = []
     for literal in model:
         clause.append(-literal)
@@ -157,19 +158,24 @@ elif optimization_problem(problem):
     wcnf = WCNF()
     for clause in clauses:
         wcnf.append(clause)
-
+        
     soft_clauses = credulous_encoding.encode_graph_minimal_change(args, atts, nb_updated_extensions, DEBUG)
     for soft_clause in soft_clauses:
         wcnf.append(soft_clause, weight=1)
-        
+
+    nb_models = 0
     s = FM(wcnf, verbose = 0)
     if s.compute():
         SAT_result = "SAT"
         model = s.model
+        nb_models+=1
         solution_cost = s.cost
     s.delete()
     while model != None and (credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics) or (strict_problem(problem) and credulous_encoding.check_counterexample_strict_version(model, args, target, nb_updated_extensions, initial_extensions, semantics))):
+        nb_models+=1
+        print(f"CEGAR LOOP. Model : {nb_models}")
         wcnf.append(forbid_model(model))
+        print(f"nb hard clauses = {len(wcnf.hard)}")
         s = FM(wcnf, verbose = 0)
         SAT_result = "UNSAT"
         solution_cost = None

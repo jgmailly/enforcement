@@ -168,7 +168,7 @@ elif optimization_problem(problem):
         model = s.model
         solution_cost = s.cost
     s.delete()
-    while model != None and credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics):
+    while model != None and (credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics) or (strict_problem(problem) and credulous_encoding.check_counterexample_strict_version(model, args, target, nb_updated_extensions, initial_extensions, semantics))):
         wcnf.append(forbid_model(model))
         s = FM(wcnf, verbose = 0)
         SAT_result = "UNSAT"

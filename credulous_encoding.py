@@ -230,5 +230,16 @@ def check_counterexample_conjunctive_negative(model, args, conjunctive_negative,
             return True
     return False
 
+#### Returns True iff the current model is a counter-example for the strict enforcement,
+#### i.e. some argument which was not initially (credulously) accepted, and does not belong to the target,
+#### is accepted in the updated theory.
+def check_counterexample_strict_version(model, args, target, nb_updated_extensions, initial_extensions, semantics):
+    args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
+    for argument in args:
+        if (argument not in target) and (not is_credulously_accepted(argument, initial_extensions)):
+            if solvers.credulous_acceptability(args,atts,argument,semantics):
+                return True
+    return False
+
 def check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics):
     return check_counterexample_negative_target(model, args, neg_target, nb_updated_extensions,semantics) or check_counterexample_conjunctive_positive(model, args, conjunctive_positive, nb_updated_extensions, semantics) or check_counterexample_conjunctive_negative(model, args, conjunctive_negative, nb_updated_extensions, semantics)

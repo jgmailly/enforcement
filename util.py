@@ -59,3 +59,38 @@ def parse_query_file(query_file):
             sys.exit(f"Line cannot be parser in query file ({query_line})")
 
     return target, neg_target, conjunctive_positive, conjunctive_negative
+
+
+# Returns the names of the arguments in a given attack
+# identified in an apx line
+def parse_attack(apx_line):
+    arg_names = apx_line[4:-2]
+    return arg_names.split(",")
+
+# Returns the names of the arguments in a given non-attack
+# identified in an apx line
+def parse_non_attack(apx_line):
+    arg_names = apx_line[5:-2]
+    return arg_names.split(",")
+
+def empty_line(apx_line):
+    return apx_line.strip() == ""
+
+## Parses constraints file, i.e. apx file describing attacks and non-atttacks
+## att(x,y). there is an attack from x to y
+## -att(x,y). there is no attack from x to y
+def parse_constraints_file(constraints_file):
+    with open(constraints_file) as apxfile:
+        apx_lines = apxfile.read().splitlines()
+
+    atts = []
+    non_atts = []
+    for apx_line in apx_lines:
+        if apx_line[0:4] == "-att":
+            non_atts.append(parse_non_attack(apx_line))
+        elif apx_line[0:3] == "att":
+            atts.append(parse_attack(apx_line))
+        elif not empty_line(apx_line):
+            sys.exit(f"Line cannot be parsed ({apx_line})")
+
+    return atts, non_atts

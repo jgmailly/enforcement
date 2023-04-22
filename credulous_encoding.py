@@ -231,10 +231,6 @@ def check_counterexample_conjunctive_negative(model, args, conjunctive_negative,
     args, atts = decode_model_as_af_struct(model,args,nb_updated_extensions)
     for conjunct in conjunctive_negative:
         if solvers.credulous_acceptability_set(args,atts,conjunct,semantics):
-            print(f"conjunct = {conjunct}")
-            print(f"updated theory = {args}, {atts}")
-            if nb_check > 10:
-                sys.exit(0)
             return True
     return False
 

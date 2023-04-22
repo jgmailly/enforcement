@@ -26,6 +26,7 @@ argparser.add_argument("-p", "--problem", help=f"the pair XX-YY with XX in {prob
 argparser.add_argument("-fo", "--format", help=f"the format of the AF file in {formats_list} (default: apx)", default="apx")
 argparser.add_argument("-o", "--output", help="the output file for printing the new theory (the standard output is used if this option is not set)")
 argparser.add_argument("-ne", "--nextensions", help="the expected number of extensions for the updated AF (default: the number of extensions of the initial AF)")
+argparser.add_argument("-c", "--constraints", help="the constraints file indicating which (non-)attacks from the initial theory should remain")
 #argparser.add_argument("-bo", "--bounded", help="the threshold for bounded enforcement")
 cli_args = argparser.parse_args()
 
@@ -33,7 +34,6 @@ if cli_args.problem == None:
     sys.exit("Missing CLI parameter -p")
 
 
-#argname = "A"
 apx_file = cli_args.af_file
 task = cli_args.problem
 split_task = task.split("-")
@@ -96,6 +96,22 @@ clauses += credulous_encoding.encode_def_variables(args, nb_updated_extensions, 
 clauses += credulous_encoding.encode_stability(args, nb_updated_extensions, updated_extensions, initial_extensions, DEBUG)
 clauses += credulous_encoding.encode_no_self_attacks(args,atts,1, nb_updated_extensions)
 
+
+if cli_args.constraints != None:
+    constraints_file = cli_args.constraints
+    constrained_atts, constrained_non_atts = util.parse_constraints_file(constraints_file)
+    for att in constrained_atts:
+        clauses.append([credulous_encoding.r_SAT_variables(att[0], att[1], 1, args, nb_updated_extensions)])
+    for non_att in constrained_non_atts:
+        clauses.append([-credulous_encoding.r_SAT_variables(non_att[0], non_att[1], 1, args, nb_updated_extensions)])
+
+##### Hard encoding of some contrains regarding theory5 and query5-3
+#clauses.append([credulous_encoding.r_SAT_variables("alpha2", "alpha1", 1, args, nb_updated_extensions)])
+#clauses.append([-credulous_encoding.r_SAT_variables("alpha1", "alpha2", 1, args, nb_updated_extensions)])
+#clauses.append([credulous_encoding.r_SAT_variables("alpha2", "delta1", 1, args, nb_updated_extensions)])
+#clauses.append([credulous_encoding.r_SAT_variables("delta2", "delta1", 1, args, nb_updated_extensions)])
+#clauses.append([-credulous_encoding.r_SAT_variables("delta1", "delta2", 1, args, nb_updated_extensions)])
+
 if False: #cli_args.bounded != None:
     print(f"bound = {cli_args.bounded}")
     bound_value = int(cli_args.bounded)
@@ -134,7 +150,6 @@ SAT_result = "UNSAT"
 
 ### Returns the clause corresponding to the negation of a model
 def forbid_model(model):
-    print(f"model = {model}")
     clause = []
     for literal in model:
         clause.append(-literal)
@@ -153,7 +168,20 @@ if decision_problem(problem):
         model = s.get_model()
 
     s.delete()
-    
+
+    while model != None and (credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics) or (strict_problem(problem) and credulous_encoding.check_counterexample_strict_version(model, args, target, nb_updated_extensions, initial_extensions, semantics))):
+        s = Solver(name='g4')
+        for clause in clauses:
+            s.add_clause(clause)
+        s.add_clause(forbid_model(model))
+
+        if s.solve():
+            SAT_result = "SAT"
+            model = s.get_model()
+        else:
+            model = None
+        s.delete()
+        
 elif optimization_problem(problem):
     wcnf = WCNF()
     for clause in clauses:
@@ -173,9 +201,7 @@ elif optimization_problem(problem):
     s.delete()
     while model != None and (credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics) or (strict_problem(problem) and credulous_encoding.check_counterexample_strict_version(model, args, target, nb_updated_extensions, initial_extensions, semantics))):
         nb_models+=1
-        print(f"CEGAR LOOP. Model : {nb_models}")
         wcnf.append(forbid_model(model))
-        print(f"nb hard clauses = {len(wcnf.hard)}")
         s = FM(wcnf, verbose = 0)
         SAT_result = "UNSAT"
         solution_cost = None

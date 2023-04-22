@@ -162,7 +162,8 @@ if decision_problem(problem):
     s = Solver(name='g4')
     for clause in clauses:
         s.add_clause(clause)
-        
+
+    model = None
     if s.solve():
         SAT_result = "SAT"
         model = s.get_model()
@@ -171,9 +172,9 @@ if decision_problem(problem):
 
     while model != None and (credulous_encoding.check_counterexample(model, args, neg_target, conjunctive_positive, conjunctive_negative, nb_updated_extensions, semantics) or (strict_problem(problem) and credulous_encoding.check_counterexample_strict_version(model, args, target, nb_updated_extensions, initial_extensions, semantics))):
         s = Solver(name='g4')
+        clauses.append(forbid_model(model))
         for clause in clauses:
             s.add_clause(clause)
-        s.add_clause(forbid_model(model))
 
         if s.solve():
             SAT_result = "SAT"
@@ -219,7 +220,6 @@ if model == None:
     solution_cost = None
 
 enforcement_time = time.time() - time_start_enforcement
-print(f"{SAT_result} - Enumeration Time = {enumeration_time} - Enforcement Time = {enforcement_time} - Total Time = {enumeration_time+enforcement_time} - Solution cost = {solution_cost}")
     
 if model != None:
     if DEBUG:
@@ -230,5 +230,15 @@ if model != None:
         with open(cli_args.output, 'w') as output_file:
             print(credulous_encoding.decode_model_as_af(model,args,nb_updated_extensions), file = output_file)
 
+    if solution_cost == None:
+        solution_cost = 0
+        updated_args, updated_atts = credulous_encoding.decode_model_as_af_struct(model,args,nb_updated_extensions)
+        for att in atts:
+            if att not in updated_atts:
+                solution_cost += 1
+        for att in updated_atts:
+            if att not in atts:
+                solution_cost += 1
 
 
+print(f"{SAT_result} - Enumeration Time = {enumeration_time} - Enforcement Time = {enforcement_time} - Total Time = {enumeration_time+enforcement_time} - Solution cost = {solution_cost}")

@@ -37,13 +37,13 @@ neg_target line, but several pos_conjunct or neg_conjunct lines are possible. Th
 ## Command line interface
 Here is the help message of the current version:
 ```bash
-usage: main.py [-h] [-v] [-p PROBLEM] [-fo FORMAT] [-o OUTPUT] [-ne NEXTENSIONS] af_file query_file
+usage: main.py [-h] [-v] [-p PROBLEM] [-fo FORMAT] [-o OUTPUT] [-ne NEXTENSIONS] [-c CONSTRAINTS] af_file query_file
 
 positional arguments:
   af_file               the file containing the initial AF
   query_file            the file containing the enforcement query
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -v, --verbose         increase output verbosity
   -p PROBLEM, --problem PROBLEM
@@ -54,6 +54,8 @@ optional arguments:
                         the output file for printing the new theory (the standard output is used if this option is not set)
   -ne NEXTENSIONS, --nextensions NEXTENSIONS
                         the expected number of extensions for the updated AF (default: the number of extensions of the initial AF)
+  -c CONSTRAINTS, --constraints CONSTRAINTS
+                        the constraints file indicating which (non-)attacks from the initial theory should remain
 ```
 In the description of the problem,
 - `C` (respectively `S`) means *C*redulous (respectively *S*keptical, not

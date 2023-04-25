@@ -55,8 +55,20 @@ enumeration_time = time.time() - time_start_enumeration
 
 DEBUG = False
 
+target, neg_target, conjunctive_positive, conjunctive_negative = util.parse_query_file(cli_args.query_file)
+
+conjunctive_size = len(conjunctive_positive)
+tmp = 0
+for conjunct_neg in conjunctive_negative:
+    if len(conjunct_neg) > tmp:
+        tmp = conjunct_neg
+conjunctive_size += tmp
+
 # m
-nb_updated_extensions = len(initial_extensions)
+if conjunctive_size > len(initial_extensions):
+    nb_updated_extensions = conjunctive_size
+else:
+    nb_updated_extensions = len(initial_extensions)
 if cli_args.nextensions != None:
     nb_updated_extensions = int(cli_args.nextensions)
 updated_extensions = [x+1 for x in range(nb_updated_extensions)]
@@ -80,7 +92,7 @@ if DEBUG:
     print("--------------------")
 
 
-target, neg_target, conjunctive_positive, conjunctive_negative = util.parse_query_file(cli_args.query_file)
+#target, neg_target, conjunctive_positive, conjunctive_negative = util.parse_query_file(cli_args.query_file)
 
 if cli_args.verbose:
     print(f"target = {target}")
@@ -241,4 +253,5 @@ if model != None:
                 solution_cost += 1
 
 
-print(f"{SAT_result} - Enumeration Time = {enumeration_time} - Enforcement Time = {enforcement_time} - Total Time = {enumeration_time+enforcement_time} - Solution cost = {solution_cost}")
+#print(f"{SAT_result} - Enumeration Time = {enumeration_time} - Enforcement Time = {enforcement_time} - Total Time = {enumeration_time+enforcement_time} - Solution cost = {solution_cost}")
+print(f"{SAT_result},{enumeration_time+enforcement_time},{solution_cost}")

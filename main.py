@@ -27,7 +27,7 @@ argparser.add_argument("-fo", "--format", help=f"the format of the AF file in {f
 argparser.add_argument("-o", "--output", help="the output file for printing the new theory (the standard output is used if this option is not set)")
 argparser.add_argument("-ne", "--nextensions", help="the expected number of extensions for the updated AF (default: the number of extensions of the initial AF)")
 argparser.add_argument("-c", "--constraints", help="the constraints file indicating which (non-)attacks from the initial theory should remain")
-#argparser.add_argument("-bo", "--bounded", help="the threshold for bounded enforcement")
+argparser.add_argument("-bo", "--bounded", help="the threshold for bounded enforcement")
 cli_args = argparser.parse_args()
 
 if cli_args.problem == None:
@@ -61,7 +61,7 @@ conjunctive_size = len(conjunctive_positive)
 tmp = 0
 for conjunct_neg in conjunctive_negative:
     if len(conjunct_neg) > tmp:
-        tmp = conjunct_neg
+        tmp = len(conjunct_neg)
 conjunctive_size += tmp
 
 # m
@@ -69,6 +69,8 @@ if conjunctive_size > len(initial_extensions):
     nb_updated_extensions = conjunctive_size
 else:
     nb_updated_extensions = len(initial_extensions)
+#nb_updated_extensions = len(initial_extensions)
+    
 if cli_args.nextensions != None:
     nb_updated_extensions = int(cli_args.nextensions)
 updated_extensions = [x+1 for x in range(nb_updated_extensions)]
@@ -117,28 +119,22 @@ if cli_args.constraints != None:
     for non_att in constrained_non_atts:
         clauses.append([-credulous_encoding.r_SAT_variables(non_att[0], non_att[1], 1, args, nb_updated_extensions)])
 
-##### Hard encoding of some contrains regarding theory5 and query5-3
-#clauses.append([credulous_encoding.r_SAT_variables("alpha2", "alpha1", 1, args, nb_updated_extensions)])
-#clauses.append([-credulous_encoding.r_SAT_variables("alpha1", "alpha2", 1, args, nb_updated_extensions)])
-#clauses.append([credulous_encoding.r_SAT_variables("alpha2", "delta1", 1, args, nb_updated_extensions)])
-#clauses.append([credulous_encoding.r_SAT_variables("delta2", "delta1", 1, args, nb_updated_extensions)])
-#clauses.append([-credulous_encoding.r_SAT_variables("delta1", "delta2", 1, args, nb_updated_extensions)])
 
-if False: #cli_args.bounded != None:
-    print(f"bound = {cli_args.bounded}")
-    bound_value = int(cli_args.bounded)
+if cli_args.bounded != None:
+    #print(f"bound = {cli_args.bounded}")
+    bound_threshold = float(cli_args.bounded)
+    bound_value = int(bound_threshold * len(args) * len(args))
     card_literals = []
     for attacker in args:
         for target in args:
             if [attacker,target] in atts:
-                card_literals.append(-r_SAT_variables(attacker, target, 1, args, nb_updated_extensions))
+                card_literals.append(-credulous_encoding.r_SAT_variables(attacker, target, 1, args, nb_updated_extensions))
             else:
-                card_literals.append(r_SAT_variables(attacker, target, 1, args, nb_updated_extensions))
-    last_SAT_var = defeat_SAT_variables(args[-1], args[-1], nb_updated_extensions, args, nb_updated_extensions)
+                card_literals.append(credulous_encoding.r_SAT_variables(attacker, target, 1, args, nb_updated_extensions))
+    last_SAT_var = credulous_encoding.defeat_SAT_variables(args[-1], args[-1], nb_updated_extensions, args, nb_updated_extensions)
     card_constraint = CardEnc.atmost(card_literals,bound=bound_value,top_id=last_SAT_var)
-    print(f"card_constraint = {card_constraint}")
-    print(f"card_constraint.clauses = {card_constraint.clauses}")
-    #clauses += card_constraint.clauses
+    #print(f"card_constraint.clauses = {card_constraint.clauses}")
+    clauses += card_constraint.clauses
 
 
 def strict_problem(problem):

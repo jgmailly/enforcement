@@ -79,18 +79,18 @@ if DEBUG:
     print("--------------------")
     for argument in args:
         for extension in updated_extensions:
-            print(f"x_({argument},{extension}) = {membership_SAT_variables(argument, extension, args, nb_updated_extensions)}")
+            print(f"x_({argument},{extension}) = {credulous_encoding.membership_SAT_variables(argument, extension, args, nb_updated_extensions)}")
     print("--------------------")
     print("--------------------")
     for attacker in args:
         for target in args:
-            print(f"r_({attacker},{target}) = {r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
+            print(f"r_({attacker},{target}) = {credulous_encoding.r_SAT_variables(attacker, target, extension, args, nb_updated_extensions)}")
     print("--------------------")
     print("--------------------")
     for X in updated_extensions:
         for attacker in args:
             for target in args:
-                print(f"def_({attacker},{target},{X}) = {defeat_SAT_variables(attacker, target, X, args, nb_updated_extensions)}")
+                print(f"def_({attacker},{target},{X}) = {credulous_encoding.defeat_SAT_variables(attacker, target, X, args, nb_updated_extensions)}")
     print("--------------------")
 
 
@@ -133,6 +133,7 @@ if cli_args.bounded != None:
                 card_literals.append(credulous_encoding.r_SAT_variables(attacker, target, 1, args, nb_updated_extensions))
     last_SAT_var = credulous_encoding.defeat_SAT_variables(args[-1], args[-1], nb_updated_extensions, args, nb_updated_extensions)
     card_constraint = CardEnc.atmost(card_literals,bound=bound_value,top_id=last_SAT_var)
+    #print(f"last_SAT_var = {last_SAT_var}")
     #print(f"card_constraint.clauses = {card_constraint.clauses}")
     clauses += card_constraint.clauses
 

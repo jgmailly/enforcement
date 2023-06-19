@@ -57,6 +57,11 @@ DEBUG = False
 
 target, neg_target, conjunctive_positive, conjunctive_negative = util.parse_query_file(cli_args.query_file)
 
+### Add all the arguments in the C+ sets to the positive targets
+for conjunct in conjunctive_positive:
+    for argument in conjunct:
+        target.append(argument)
+
 conjunctive_size = len(conjunctive_positive)
 tmp = 0
 for conjunct_neg in conjunctive_negative:

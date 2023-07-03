@@ -80,18 +80,19 @@ for i in range(nb_conjunctpos):
             j += 1
     cplus.append(conjunctpos)
 
-def not_in_cplus(argname, cplus):
-    for conjunctpos in cplus:
-        if argname in conjunctpos:
-            return False
-    return True
+#def not_in_cplus(argname, cplus):
+#    for conjunctpos in cplus:
+#        if argname in conjunctpos:
+#            return False
+#    return True
 
 for i in range(nb_conjunctneg):
     conjunctneg = []
     j = 0
     while j < int(cli_args.conjunctpossize):
         index = random.randint(0, len(args)-1)
-        if (args[index] not in p) and (not_in_cplus(args[index], cplus)):
+        #if (args[index] not in p) and (not_in_cplus(args[index], cplus)):
+        if args[index] not in conjunctneg:
             conjunctneg.append(args[index])
             j += 1
     cminus.append(conjunctneg)

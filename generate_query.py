@@ -72,17 +72,28 @@ nb_conjunctneg = int(cli_args.conjunctneg)
 
 for i in range(nb_conjunctpos):
     conjunctpos = []
-    for j in range(int(cli_args.conjunctpossize)):
+    j = 0
+    while j < int(cli_args.conjunctpossize):
         index = random.randint(0, len(args)-1)
-        conjunctpos.append(args[index])
+        if args[index] not in n:
+            conjunctpos.append(args[index])
+            j += 1
     cplus.append(conjunctpos)
 
+def not_in_cplus(argname, cplus):
+    for conjunctpos in cplus:
+        if argname in conjunctpos:
+            return False
+    return True
 
 for i in range(nb_conjunctneg):
     conjunctneg = []
-    for j in range(int(cli_args.conjunctnegsize)):
+    j = 0
+    while j < int(cli_args.conjunctpossize):
         index = random.randint(0, len(args)-1)
-        conjunctneg.append(args[index])
+        if (args[index] not in p) and (not_in_cplus(args[index], cplus)):
+            conjunctneg.append(args[index])
+            j += 1
     cminus.append(conjunctneg)
 
 if cli_args.verbose:

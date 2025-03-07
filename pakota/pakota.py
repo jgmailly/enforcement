@@ -392,7 +392,6 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
             target_solver.add_clause([af.neg_conjunct_var[i]], weight=af.neg_conjunct_weight)
             target_lits.append(af.neg_conjunct_var[i])
 
-    print("targets", target_lits)
     top = next(af.var_counter)-1
 
     count = 0
@@ -635,7 +634,6 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
             formula.append([af.neg_conjunct_var[i]], weight=af.neg_conjunct_weight*weight_coeff)
             target_lits.append(af.neg_conjunct_var[i])
 
-    print("targets", target_lits)
     for a in af.args:
         for b in af.args:
             if af.att_exists[(a,b)]:
@@ -853,9 +851,9 @@ if __name__ == '__main__':
         print("c Computing the set of credulously accepted arguments...")
         static_af = AF(arguments, attacks, semantics=args.semantics, static=True)
         accepted = get_cred_accepted_arguments(static_af, args.semantics)
-        if args.verbose:
-            print("c", accepted)
         accepted = set(static_af.int_to_arg[a] for a in accepted)
+        if args.verbose:
+            print("c Accepted arguments:", accepted)
 
         init_time = get_utime()
         print("c Accepted time:", round(init_time-start_time, 2), "seconds")
@@ -874,9 +872,9 @@ if __name__ == '__main__':
         print("c Computing the set of skeptically arguments...")
         static_af = AF(arguments, attacks, semantics=args.semantics, static=True)
         accepted = get_skept_accepted_arguments(static_af, args.semantics)
-        if args.verbose:
-            print("c", accepted)
         accepted = set(static_af.int_to_arg[a] for a in accepted)
+        if args.verbose:
+            print("c Accepted arguments:", accepted)
 
         init_time = get_utime()
         print("c Accepted time:", round(init_time-start_time, 2), "seconds")

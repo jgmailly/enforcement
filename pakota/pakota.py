@@ -932,11 +932,11 @@ if __name__ == '__main__':
         new_af.print(enforcement_instance.int_to_arg)
         if args.mode == "cred":
             accepted = get_cred_accepted_arguments(new_af, args.semantics)
-            accepted = set(static_af.int_to_arg[a] for a in accepted)
+            accepted = set(enforcement_instance.int_to_arg[a] for a in accepted)
             print(sorted(list(accepted)))
         elif args.mode == "skept":
             accepted = get_skept_accepted_arguments(new_af, args.semantics)
-            accepted = set(static_af.int_to_arg[a] for a in accepted)
+            accepted = set(enforcement_instance.int_to_arg[a] for a in accepted)
             print(sorted(list(accepted)))
 
 #    filename = sys.argv[1]

@@ -764,7 +764,7 @@ def parse_query(filename):
     target_lines = [line.replace('target(', '').replace(').', '').split(',') for line in lines if line.startswith('target')]
     neg_target_lines = [line.replace('neg_target(', '').replace(').', '').split(',') for line in lines if line.startswith('neg_target')]
     assert(len(target_lines) <= 1 and len(neg_target_lines) <= 1)
-    target = neg_target = None
+    target = neg_target = []
     if len(target_lines) > 0:
         target = target_lines[0]
     if len(neg_target_lines) > 0:
@@ -930,10 +930,15 @@ if __name__ == '__main__':
     print("c Enforcement time:", round(end_enf_time-start_enf_time,2), "seconds")
     if new_af is not None and args.verbose:
         new_af.print(enforcement_instance.int_to_arg)
-        accepted = get_cred_accepted_arguments(new_af, args.semantics)
-        accepted = set(static_af.int_to_arg[a] for a in accepted)
-        print(sorted(list(accepted)))
- 
+        if args.mode == "cred":
+            accepted = get_cred_accepted_arguments(new_af, args.semantics)
+            accepted = set(static_af.int_to_arg[a] for a in accepted)
+            print(sorted(list(accepted)))
+        elif args.mode == "skept":
+            accepted = get_skept_accepted_arguments(new_af, args.semantics)
+            accepted = set(static_af.int_to_arg[a] for a in accepted)
+            print(sorted(list(accepted)))
+
 #    filename = sys.argv[1]
 #    semantics = sys.argv[2]
 #    solver = RC2(WCNF())

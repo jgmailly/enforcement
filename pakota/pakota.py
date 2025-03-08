@@ -91,13 +91,18 @@ class AF():
             self.arg_accepted_in_witness_var |= { (i+len(self.args),a) : next(self.var_counter) for i in range(len(pos_conjunct_enfs)) for a in self.args }
             self.att_exists_and_source_accepted_in_witness_var |= { (i+len(self.args),a,b) : next(self.var_counter) for i in range(len(pos_conjunct_enfs)) for a in self.args for b in self.args }
 
-            self.pos_conjunct_accepted_var = { i : next(self.var_counter) for i in range(len(self.pos_conjunct_enfs)) }
+            # special case
+            if len(self.pos_cred_enfs) == len(self.neg_skept_enfs) == len(self.pos_conjunct_enfs) == 0:
+                self.arg_accepted_in_witness_var |= { (0,a) : next(self.var_counter) for a in self.args }
+                self.att_exists_and_source_accepted_in_witness_var |= { (0,a,b) : next(self.var_counter) for a in self.args for b in self.args }
+
+            self.pos_conjunct_target_var = { i : next(self.var_counter) for i in range(len(self.pos_conjunct_enfs)) }
             if self.neg_cred_weight != float("inf"):
                 self.neg_cred_target_var = { n : next(self.var_counter) for n in self.neg_cred_enfs }
             if self.pos_skept_weight != float("inf"):
                 self.pos_skept_target_var = { p : next(self.var_counter) for p in self.pos_skept_enfs }
             if self.neg_conjunct_weight != float("inf"):
-                self.neg_conjunct_var = { i : next(self.var_counter) for i in range(len(self.neg_conjunct_enfs)) }
+                self.neg_conjunct_target_var = { i : next(self.var_counter) for i in range(len(self.neg_conjunct_enfs)) }
 
     def print(self, int_to_arg):
         for a in self.args:
@@ -141,11 +146,10 @@ def add_stb_clauses(af, formula):
     for a in af.args:
         formula.append([af.arg_accepted_var[a], af.arg_rejected_var[a]])
 
-# TODO: neg conjunct in witness: ensure that conjunctive target is not accepted in any witness
 def add_pos_conjunct_accepted_clauses(af, index, formula):
     for a in af.pos_conjunct_enfs[index]:
-        formula.append([-af.pos_conjunct_accepted_var[index], af.arg_accepted_in_witness_var[(index + len(af.args), a)]])
-    formula.append([af.pos_conjunct_accepted_var[index]] + [-af.arg_accepted_in_witness_var[(index + len(af.args), a)] for a in af.pos_conjunct_enfs[index]])
+        formula.append([-af.pos_conjunct_target_var[index], af.arg_accepted_in_witness_var[(index + len(af.args), a)]])
+    formula.append([af.pos_conjunct_target_var[index]] + [-af.arg_accepted_in_witness_var[(index + len(af.args), a)] for a in af.pos_conjunct_enfs[index]])
 
 def add_att_exists_and_source_accepted_in_witness_clauses(af, index, formula):
     for a in af.args:
@@ -206,39 +210,65 @@ def enforce(af, sem, strong=True):
 
     for p in af.pos_cred_enfs:
         formula.append([af.arg_accepted_in_witness_var[(p, p)]])
-        for n in af.neg_cred_enfs:
-            formula.append([-af.arg_accepted_in_witness_var[(p, n)]])
+        for n_ in af.neg_cred_enfs:
+            formula.append([-af.arg_accepted_in_witness_var[(p, n_)]])
+        for p_ in af.pos_skept_enfs:
+            formula.append([af.arg_accepted_in_witness_var[(p, p_)]])
+        for i in range(len(af.neg_conjunct_enfs)):
+            formula.append([-af.arg_accepted_in_witness_var[(p, n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm' or sem == 'com' or sem == 'prf':
             add_arg_in_adm_ext_clauses(af, p, formula)
         elif sem == 'stb':
-             add_arg_in_stb_ext_clauses(af, p, formula)
+            add_arg_in_stb_ext_clauses(af, p, formula)
         else:
-             print('Semantics', sem, 'not supported for credulous targets.')
-             sys.exit(1)
+            print('Semantics', sem, 'not supported for credulous targets.')
+            sys.exit(1)
 
     for n in af.neg_skept_enfs:
         formula.append([-af.arg_accepted_in_witness_var[(n, n)]])
-        for p in af.pos_skept_enfs:
-            formula.append([af.arg_accepted_in_witness_var[(n, p)]])
+        for n_ in af.neg_cred_enfs:
+            formula.append([-af.arg_accepted_in_witness_var[(n, n_)]])
+        for p_ in af.pos_skept_enfs:
+            formula.append([af.arg_accepted_in_witness_var[(n, p_)]])
+        for i in range(len(af.neg_conjunct_enfs)):
+            formula.append([-af.arg_accepted_in_witness_var[(n, n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm':
             add_arg_in_adm_ext_clauses(af, n, formula)
         elif sem == 'stb':
-             add_arg_in_stb_ext_clauses(af, n, formula)
+            add_arg_in_stb_ext_clauses(af, n, formula)
         else:
-             print('Semantics', sem, 'not supported for skeptical targets.')
-             sys.exit(1)
+            print('Semantics', sem, 'not supported for skeptical targets.')
+            sys.exit(1)
 
     for i in range(len(af.pos_conjunct_enfs)):
         add_pos_conjunct_accepted_clauses(af, i, formula)
-        formula.append([af.pos_conjunct_accepted_var[i]])
-        for n in af.neg_cred_enfs:
-            formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n)]])
-        for p in af.pos_skept_enfs:
-            formula.append([af.arg_accepted_in_witness_var[(i+len(af.args), p)]])
+        formula.append([af.pos_conjunct_target_var[i]])
+        for n_ in af.neg_cred_enfs:
+            formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n_)]])
+        for p_ in af.pos_skept_enfs:
+            formula.append([af.arg_accepted_in_witness_var[(i+len(af.args), p_)]])
+        for i in range(len(af.neg_conjunct_enfs)):
+            formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm' or sem == 'com' or sem == 'prf':
             add_arg_in_adm_ext_clauses(af, i+len(af.args), formula)
         elif sem == 'stb':
             add_arg_in_stb_ext_clauses(af, i+len(af.args), formula)
+        else:
+            print('Semantics', sem, 'not supported for conjunctive targets.')
+            sys.exit(1)
+
+    # special case: no positive credulous, negative skeptical, or positive conjunctive targets
+    if len(af.pos_cred_enfs) == len(af.neg_skept_enfs) == len(af.pos_conjunct_enfs) == 0:
+        for n_ in af.neg_cred_enfs:
+            formula.append([-af.arg_accepted_in_witness_var[(0, n_)]])
+        for p_ in af.pos_skept_enfs:
+            formula.append([af.arg_accepted_in_witness_var[(0, p_)]])
+        for i in range(len(af.neg_conjunct_enfs)):
+            formula.append([-af.arg_accepted_in_witness_var[(0, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        if sem == 'adm' or sem == 'com' or sem == 'prf':
+            add_arg_in_adm_ext_clauses(af, 0, formula)
+        elif sem == 'stb':
+            add_arg_in_stb_ext_clauses(af, 0, formula)
         else:
             print('Semantics', sem, 'not supported for conjunctive targets.')
             sys.exit(1)
@@ -254,12 +284,14 @@ def enforce(af, sem, strong=True):
     count = 0
     while True:
         count += 1
-        print("c Iteration", count)
+        print("c CEGAR iteration", count)
+        print("c Solving abstraction")
 
         model = solver.compute()
         if model is None:
             print('s UNSATISFIABLE')
             return None
+        print("o", solver.cost)
 
         new_atts = []
         for a in af.args:
@@ -267,7 +299,6 @@ def enforce(af, sem, strong=True):
                 if model[af.att_var[(a,b)]-1] > 0:
                     new_atts += [(a,b)]
         new_af = AF(af.args, new_atts, static=True)
-        print("c Current objective value", solver.cost)
 
         cnf = CNF()
         if sem == 'adm' or sem == 'com' or sem == 'prf':
@@ -288,9 +319,12 @@ def enforce(af, sem, strong=True):
 
         result = sat_solver.solve()
         if result == True:
+            print("c Counterexample extension found")
             clause = refinement_clause(af, new_af, sat_solver.get_model() if strong else None)
             solver.add_clause(clause)
+            print("c Added refinement clause of length", len(clause))
         else:
+            print("c No counterexample found")
             print("c RC2 oracle time:", round(solver.oracle_time(),2), "seconds")
             print('c Number of iterations:', count)
             print('s OPTIMUM FOUND')
@@ -308,11 +342,23 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
         if af.pos_cred_weight == float("inf"):
             formula.append([af.arg_accepted_in_witness_var[(p, p)]])
         if af.neg_cred_weight == float("inf"):
-            for n in af.neg_cred_enfs:
-                formula.append([-af.arg_accepted_in_witness_var[(p, n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(p, n_)]])
         else:
-            for n in af.neg_cred_enfs:
-                formula.append([-af.neg_cred_target_var[n], -af.arg_accepted_in_witness_var[(p, n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(p, n_)]])
+        if af.pos_skept_weight == float("inf"):
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(p, p_)]])
+        else:
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(p, p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(p, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(p, n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm' or sem == 'com' or sem == 'prf':
             add_arg_in_adm_ext_clauses(af, p, formula)
         elif sem == 'stb':
@@ -324,39 +370,88 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
     for n in af.neg_skept_enfs:
         if af.neg_skept_weight == float("inf"):
             formula.append([-af.arg_accepted_in_witness_var[(n, n)]])
+        if af.neg_cred_weight == float("inf"):
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(n, n_)]])
+        else:
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(n, n_)]])
         if af.pos_skept_weight == float("inf"):
-            for p in af.pos_skept_enfs:
-                formula.append([af.arg_accepted_in_witness_var[(n, p)]])
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(n, p_)]])
+        else:
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(n, p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(n, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(n, n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm':
             add_arg_in_adm_ext_clauses(af, n, formula)
         elif sem == 'stb':
-             add_arg_in_stb_ext_clauses(af, n, formula)
+            add_arg_in_stb_ext_clauses(af, n, formula)
         else:
-             print('Semantics', sem, 'not supported for skeptical targets.')
-             sys.exit(1)
+            print('Semantics', sem, 'not supported for skeptical targets.')
+            sys.exit(1)
 
     for i in range(len(af.pos_conjunct_enfs)):
         add_pos_conjunct_accepted_clauses(af, i, formula)
         if af.pos_conjunct_weight == float("inf"):
-            formula.append([af.pos_conjunct_accepted_var[i]])
+            formula.append([af.pos_conjunct_target_var[i]])
         if af.neg_cred_weight == float("inf"):
-            for n in af.neg_cred_enfs:
-                formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n_)]])
         else:
-            for n in af.neg_cred_enfs:
-                formula.append([-af.neg_cred_target_var[n], -af.arg_accepted_in_witness_var[(i+len(af.args), n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(i+len(af.args), n_)]])
         if af.pos_skept_weight == float("inf"):
-            for p in af.pos_skept_enfs:
-                formula.append([af.arg_accepted_in_witness_var[(i+len(af.args), p)]])
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(i+len(af.args), p_)]])
         else:
-            for p in af.pos_skept_enfs:
-                formula.append([-af.pos_skept_target_var[p], af.arg_accepted_in_witness_var[(i+len(af.args), p)]])
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(i+len(af.args), p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(i+len(af.args), n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm' or sem == 'com' or sem == 'prf':
             add_arg_in_adm_ext_clauses(af, i+len(af.args), formula)
         elif sem == 'stb':
             add_arg_in_stb_ext_clauses(af, i+len(af.args), formula)
         else:
             print('Semantics', sem, 'not supported.')
+            sys.exit(1)
+
+    # special case: no positive credulous, negative skeptical, or positive conjunctive targets
+    if len(af.pos_cred_enfs) == len(af.neg_skept_enfs) == len(af.pos_conjunct_enfs) == 0:
+        if af.neg_cred_weight == float("inf"):
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(0, n_)]])
+        else:
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(0, n_)]])
+        if af.pos_skept_weight == float("inf"):
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(0, p_)]])
+        else:
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(0, p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(0, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(0, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        if sem == 'adm' or sem == 'com' or sem == 'prf':
+            add_arg_in_adm_ext_clauses(af, 0, formula)
+        elif sem == 'stb':
+            add_arg_in_stb_ext_clauses(af, 0, formula)
+        else:
+            print('Semantics', sem, 'not supported for conjunctive targets.')
             sys.exit(1)
 
     target_lits = []
@@ -378,26 +473,27 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
             target_lits.append(af.pos_skept_target_var[p])
 
     if af.neg_skept_weight != float("inf"):
-        for n in af.neg_cred_enfs:
+        for n in af.neg_skept_enfs:
             target_solver.add_clause([-af.arg_accepted_in_witness_var[(n, n)]], weight=af.neg_skept_weight)
             target_lits.append(-af.arg_accepted_in_witness_var[(n, n)])
 
     if af.pos_conjunct_weight != float("inf"):
         for i in range(len(af.pos_conjunct_enfs)):
-            target_solver.add_clause([af.pos_conjunct_accepted_var[i]], weight=af.pos_conjunct_weight)
-            target_lits.append(af.pos_conjunct_accepted_var[i])
+            target_solver.add_clause([af.pos_conjunct_target_var[i]], weight=af.pos_conjunct_weight)
+            target_lits.append(af.pos_conjunct_target_var[i])
 
     if af.neg_conjunct_weight != float("inf"):
         for i in range(len(af.neg_conjunct_enfs)):
-            target_solver.add_clause([af.neg_conjunct_var[i]], weight=af.neg_conjunct_weight)
-            target_lits.append(af.neg_conjunct_var[i])
+            target_solver.add_clause([af.neg_conjunct_target_var[i]], weight=af.neg_conjunct_weight)
+            target_lits.append(af.neg_conjunct_target_var[i])
 
     top = next(af.var_counter)-1
 
     count = 0
     while True:
         count += 1
-        print("c Iteration", count)
+        print("c CEGAR iteration", count)
+        print("c Solving abstraction by maximizing target satisfaction")
 
         model = target_solver.compute()
         if model is None:
@@ -410,10 +506,9 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
                 if model[af.att_var[(a,b)]-1] > 0:
                     new_atts += [(a,b)]
         new_af = AF(af.args, new_atts, static=True)
-        print("c Current objective value (targets)", target_solver.cost)
-        print("c Number of attacks", len(new_atts))
+        print("c Current objective value (target)", target_solver.cost)
 
-        print("c Computing syntactic change")
+        print("c Minimizing syntactic change under constraint on targets")
         change_solver = RC2(formula, solver='g3', adapt=True, exhaust=True, incr=False, trim=0, minz=True, verbose=3)
         card = CardEnc.atmost([-lit for lit in target_lits], bound=target_solver.cost, top_id=top, encoding=CARD_ENCODING)
         # TODO: PB constraint for weighted instances
@@ -438,8 +533,7 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
                     if model[af.att_var[(a,b)]-1] > 0:
                         new_atts += [(a,b)]
             new_af = AF(af.args, new_atts, static=True)
-            print("c Current objective value (changes)", change_solver.cost)
-            print("c Number of attacks", len(new_atts))
+            print("c Current objective value (change)", change_solver.cost)
 
             cnf = CNF()
             if sem == 'adm' or sem == 'com' or sem == 'prf':
@@ -463,7 +557,7 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
                         cex_clause.append(-new_af.arg_accepted_var[p])
             conjunct_var = { i : 0 for i in range(len(af.neg_conjunct_enfs)) }
             for i in range(len(af.neg_conjunct_enfs)):
-                if af.neg_conjunct_weight == float("inf") or model[af.neg_conjunct_var[i]-1] > 0:
+                if af.neg_conjunct_weight == float("inf") or model[af.neg_conjunct_target_var[i]-1] > 0:
                     var = next(new_af.var_counter)
                     for a in af.neg_conjunct_enfs[i]:
                         sat_solver.add_clause([-var, new_af.arg_accepted_var[a]])
@@ -474,7 +568,7 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
 
             result = sat_solver.solve()
             if result == True:
-                print("c Counterexample found (changes)")
+                print("c Counterexample extension found")
                 sat_model = sat_solver.get_model()
                 clause = refinement_clause(af, new_af, sat_model if strong else None)
                 flag = False
@@ -485,7 +579,7 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
                             change_solver.add_clause(clause)
                             formula.append(clause)
                             flag = True
-                            print("c Added hard refinement for negative credulous targets")
+                            print("c Added hard refinement for negative credulous targets", len(clause))
                             break
                 if flag:
                     continue
@@ -496,7 +590,7 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
                             change_solver.add_clause(clause)
                             formula.append(clause)
                             flag = True
-                            print("c Added hard refinement for positive skeptical targets")
+                            print("c Added hard refinement for positive skeptical targets", len(clause))
                             break
                 if flag:
                     continue
@@ -507,7 +601,7 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
                             change_solver.add_clause(clause)
                             formula.append(clause)
                             flag = True
-                            print("c Added hard refinement for negative conjunctive targets")
+                            print("c Added hard refinement for negative conjunctive targets", len(clause))
                             break
                 if flag:
                     continue
@@ -517,23 +611,24 @@ def enforce_with_soft_targets_lex(af, sem, strong=True):
                             target_solver.add_clause([-af.neg_cred_target_var[n]] + clause)
                             change_solver.add_clause([-af.neg_cred_target_var[n]] + clause)
                             formula.append([-af.neg_cred_target_var[n]] + clause)
-                            print("c Added soft refinement for negative credulous targets")
+                            print("c Added soft refinement for negative credulous targets", len(clause)+1)
                 for p in af.pos_skept_enfs:
                     if af.pos_skept_weight != float("inf") and model[af.pos_skept_target_var[p]-1] > 0:
                         if sat_model[new_af.arg_accepted_var[p]-1] < 0:
                             target_solver.add_clause([-af.pos_skept_target_var[p]] + clause)
                             change_solver.add_clause([-af.pos_skept_target_var[p]] + clause)
                             formula.append([-af.pos_skept_target_var[p]] + clause)
-                            print("c Added soft refinement for positive skeptical targets")
+                            print("c Added soft refinement for positive skeptical targets", len(clause)+1)
                 for i in range(len(af.neg_conjunct_enfs)):
-                    if af.neg_conjunct_weight != float("inf") and model[af.neg_conjunct_var[i]-1] > 0:
+                    if af.neg_conjunct_weight != float("inf") and model[af.neg_conjunct_target_var[i]-1] > 0:
                         if sat_model[conjunct_var[i]-1] > 0:
-                            target_solver.add_clause([-af.neg_conjunct_var[i]] + clause)
-                            change_solver.add_clause([-af.neg_conjunct_var[i]] + clause)
-                            formula.append([-af.neg_conjunct_var[i]] + clause)
-                            print("c Added soft refinement for negative conjunctive targets")
+                            target_solver.add_clause([-af.neg_conjunct_target_var[i]] + clause)
+                            change_solver.add_clause([-af.neg_conjunct_target_var[i]] + clause)
+                            formula.append([-af.neg_conjunct_target_var[i]] + clause)
+                            print("c Added soft refinement for negative conjunctive targets", len(clause)+1)
                 continue
 
+            print("c No counterexample found")
             print('c Number of iterations:', count)
             print('s OPTIMUM FOUND')
             print('o {0} {1}'.format(target_solver.cost, change_solver.cost))
@@ -550,11 +645,23 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
         if af.pos_cred_weight == float("inf"):
             formula.append([af.arg_accepted_in_witness_var[(p, p)]])
         if af.neg_cred_weight == float("inf"):
-            for n in af.neg_cred_enfs:
-                formula.append([-af.arg_accepted_in_witness_var[(p, n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(p, n_)]])
         else:
-            for n in af.neg_cred_enfs:
-                formula.append([-af.neg_cred_target_var[n], -af.arg_accepted_in_witness_var[(p, n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(p, n_)]])
+        if af.pos_skept_weight == float("inf"):
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(p, p_)]])
+        else:
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(p, p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(p, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(p, n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm' or sem == 'com' or sem == 'prf':
             add_arg_in_adm_ext_clauses(af, p, formula)
         elif sem == 'stb':
@@ -566,39 +673,88 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
     for n in af.neg_skept_enfs:
         if af.neg_skept_weight == float("inf"):
             formula.append([-af.arg_accepted_in_witness_var[(n, n)]])
+        if af.neg_cred_weight == float("inf"):
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(n, n_)]])
+        else:
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(n, n_)]])
         if af.pos_skept_weight == float("inf"):
-            for p in af.pos_skept_enfs:
-                formula.append([af.arg_accepted_in_witness_var[(n, p)]])
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(n, p_)]])
+        else:
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(n, p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(n, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(n, n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm':
             add_arg_in_adm_ext_clauses(af, n, formula)
         elif sem == 'stb':
-             add_arg_in_stb_ext_clauses(af, n, formula)
+            add_arg_in_stb_ext_clauses(af, n, formula)
         else:
-             print('Semantics', sem, 'not supported for skeptical targets.')
-             sys.exit(1)
+            print('Semantics', sem, 'not supported for skeptical targets.')
+            sys.exit(1)
 
     for i in range(len(af.pos_conjunct_enfs)):
         add_pos_conjunct_accepted_clauses(af, i, formula)
         if af.pos_conjunct_weight == float("inf"):
-            formula.append([af.pos_conjunct_accepted_var[i]])
+            formula.append([af.pos_conjunct_target_var[i]])
         if af.neg_cred_weight == float("inf"):
-            for n in af.neg_cred_enfs:
-                formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n_)]])
         else:
-            for n in af.neg_cred_enfs:
-                formula.append([-af.neg_cred_target_var[n], -af.arg_accepted_in_witness_var[(i+len(af.args), n)]])
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(i+len(af.args), n_)]])
         if af.pos_skept_weight == float("inf"):
-            for p in af.pos_skept_enfs:
-                formula.append([af.arg_accepted_in_witness_var[(i+len(af.args), p)]])
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(i+len(af.args), p_)]])
         else:
-            for p in af.pos_skept_enfs:
-                formula.append([-af.pos_skept_target_var[p], af.arg_accepted_in_witness_var[(i+len(af.args), p)]])
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(i+len(af.args), p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(i+len(af.args), n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(i+len(af.args), n_)] for n_ in af.neg_conjunct_enfs[i]])
         if sem == 'adm' or sem == 'com' or sem == 'prf':
             add_arg_in_adm_ext_clauses(af, i+len(af.args), formula)
         elif sem == 'stb':
             add_arg_in_stb_ext_clauses(af, i+len(af.args), formula)
         else:
             print('Semantics', sem, 'not supported.')
+            sys.exit(1)
+
+    # special case: no positive credulous, negative skeptical, or positive conjunctive targets
+    if len(af.pos_cred_enfs) == len(af.neg_skept_enfs) == len(af.pos_conjunct_enfs) == 0:
+        if af.neg_cred_weight == float("inf"):
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.arg_accepted_in_witness_var[(0, n_)]])
+        else:
+            for n_ in af.neg_cred_enfs:
+                formula.append([-af.neg_cred_target_var[n_], -af.arg_accepted_in_witness_var[(0, n_)]])
+        if af.pos_skept_weight == float("inf"):
+            for p_ in af.pos_skept_enfs:
+                formula.append([af.arg_accepted_in_witness_var[(0, p_)]])
+        else:
+            for p_ in af.pos_skept_enfs:
+                formula.append([-af.pos_skept_target_var[p_], af.arg_accepted_in_witness_var[(0, p_)]])
+        if af.neg_conjunct_weight == float("inf"):
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.arg_accepted_in_witness_var[(0, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        else:
+            for i in range(len(af.neg_conjunct_enfs)):
+                formula.append([-af.neg_conjunct_target_var[i]] + [-af.arg_accepted_in_witness_var[(0, n_)] for n_ in af.neg_conjunct_enfs[i]])
+        if sem == 'adm' or sem == 'com' or sem == 'prf':
+            add_arg_in_adm_ext_clauses(af, 0, formula)
+        elif sem == 'stb':
+            add_arg_in_stb_ext_clauses(af, 0, formula)
+        else:
+            print('Semantics', sem, 'not supported for conjunctive targets.')
             sys.exit(1)
 
     target_lits = []
@@ -616,23 +772,23 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
 
     if af.pos_skept_weight != float("inf"):
         for p in af.pos_skept_enfs:
-            target_solver.add_clause([af.pos_skept_target_var[p]], weight=af.pos_skept_weight)
+            formula.append([af.pos_skept_target_var[p]], weight=af.pos_skept_weight)
             target_lits.append(af.pos_skept_target_var[p])
 
     if af.neg_skept_weight != float("inf"):
-        for n in af.neg_cred_enfs:
-            target_solver.add_clause([-af.arg_accepted_in_witness_var[(n, n)]], weight=af.neg_skept_weight)
+        for n in af.neg_skept_enfs:
+            formula.append([-af.arg_accepted_in_witness_var[(n, n)]], weight=af.neg_skept_weight)
             target_lits.append(-af.arg_accepted_in_witness_var[(n, n)])
 
     if af.pos_conjunct_weight != float("inf"):
         for i in range(len(af.pos_conjunct_enfs)):
-            formula.append([af.pos_conjunct_accepted_var[i]], weight=af.pos_conjunct_weight*weight_coeff)
-            target_lits.append(af.pos_conjunct_accepted_var[i])
+            formula.append([af.pos_conjunct_target_var[i]], weight=af.pos_conjunct_weight*weight_coeff)
+            target_lits.append(af.pos_conjunct_target_var[i])
 
     if af.neg_conjunct_weight != float("inf"):
         for i in range(len(af.neg_conjunct_enfs)):
-            formula.append([af.neg_conjunct_var[i]], weight=af.neg_conjunct_weight*weight_coeff)
-            target_lits.append(af.neg_conjunct_var[i])
+            formula.append([af.neg_conjunct_target_var[i]], weight=af.neg_conjunct_weight*weight_coeff)
+            target_lits.append(af.neg_conjunct_target_var[i])
 
     for a in af.args:
         for b in af.args:
@@ -647,7 +803,8 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
     count = 0
     while True:
         count += 1
-        print("c Iteration", count)
+        print("c CEGAR iteration", count)
+        print("c Solving abstraction")
 
         model = solver.compute()
         if model is None:
@@ -660,8 +817,7 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
                 if model[af.att_var[(a,b)]-1] > 0:
                     new_atts += [(a,b)]
         new_af = AF(af.args, new_atts, static=True)
-        print("c Current objective value", solver.cost)
-        print("c Number of attacks", len(new_atts))
+        print("o", solver.cost)
 
         cnf = CNF()
         if sem == 'adm' or sem == 'com' or sem == 'prf':
@@ -687,7 +843,7 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
 
         conjunct_var = { i : 0 for i in range(len(af.neg_conjunct_enfs)) }
         for i in range(len(af.neg_conjunct_enfs)):
-            if af.neg_conjunct_weight == float("inf") or model[af.neg_conjunct_var[i]-1] > 0:
+            if af.neg_conjunct_weight == float("inf") or model[af.neg_conjunct_target_var[i]-1] > 0:
                 var = next(new_af.var_counter)
                 for a in af.neg_conjunct_enfs[i]:
                     sat_solver.add_clause([-var, new_af.arg_accepted_var[a]])
@@ -698,7 +854,7 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
 
         result = sat_solver.solve()
         if result == True:
-            print("c Counterexample found")
+            print("c Counterexample extension found")
             sat_model = sat_solver.get_model()
             clause = refinement_clause(af, new_af, sat_model if strong else None)
             flag = False
@@ -707,7 +863,7 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
                     if sat_model[new_af.arg_accepted_var[n]-1] > 0:
                         solver.add_clause(clause)
                         flag = True
-                        print("c Added hard refinement for negative credulous targets")
+                        print("c Added hard refinement for negative credulous targets", len(clause))
                         break
             if flag:
                 continue
@@ -716,7 +872,7 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
                     if sat_model[new_af.arg_accepted_var[p]-1] < 0:
                         solver.add_clause(clause)
                         flag = True
-                        print("c Added hard refinement for positive skeptical targets")
+                        print("c Added hard refinement for positive skeptical targets", len(clause))
                         break
             if flag:
                 continue
@@ -725,7 +881,7 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
                     if sat_model[conjunct_var[i]-1] > 0:
                         solver.add_clause(clause)
                         flag = True
-                        print("c Added hard refinement for negative conjunctive targets")
+                        print("c Added hard refinement for negative conjunctive targets", len(clause))
                         break
             if flag:
                 continue
@@ -733,19 +889,21 @@ def enforce_with_soft_targets_wght(af, sem, strong=True):
                 if af.neg_cred_weight != float("inf") and model[af.neg_cred_target_var[n]-1] > 0:
                     if sat_model[new_af.arg_accepted_var[n]-1] > 0:
                         solver.add_clause([-af.neg_cred_target_var[n]] + clause)
-                        print("c Added soft refinement for negative credulous targets")
+                        print("c Added soft refinement for negative credulous targets", len(clause)+1)
             for p in af.pos_skept_enfs:
                 if af.pos_skept_weight != float("inf") and model[af.pos_skept_target_var[p]-1] > 0:
                     if sat_model[new_af.arg_accepted_var[p]-1] < 0:
                         solver.add_clause([-af.pos_skept_target_var[p]] + clause)
-                        print("c Added soft refinement for positive skeptical targets")
+                        print("c Added soft refinement for positive skeptical targets", len(clause)+1)
             for i in range(len(af.neg_conjunct_enfs)):
-                if af.neg_conjunct_weight != float("inf") and model[af.neg_conjunct_var[i]-1] > 0:
+                if af.neg_conjunct_weight != float("inf") and model[af.neg_conjunct_target_var[i]-1] > 0:
                     if sat_model[conjunct_var[i]-1] > 0:
-                        solver.add_clause([-af.neg_conjunct_var[i]] + clause)
-                        print("c Added soft refinement for negative conjunctive targets")
+                        solver.add_clause([-af.neg_conjunct_target_var[i]] + clause)
+                        print("c Added soft refinement for negative conjunctive targets", len(clause)+1)
             continue
 
+        print("c No counterexample found")
+        print("c RC2 oracle time:", round(solver.oracle_time(),2), "seconds")
         print('c Number of iterations:', count)
         print('s OPTIMUM FOUND')
         print('o {0}'.format(solver.cost))
@@ -836,6 +994,7 @@ if __name__ == '__main__':
     parser.add_argument("--pos-conjunct-weight", default="inf", help="Weight for positive conjunctive targets (default: inf).")
     parser.add_argument("--neg-conjunct-weight", default="inf", help="Weight for negative conjunctive targets (default: inf).")
     parser.add_argument("--semantic-targets", default=False, action="store_true", help="Modify non-conjunctive targets to take accepted arguments into account.")
+    parser.add_argument("--lex", default=False, action="store_true", help="Employ lexicographic optimization.")
     args = parser.parse_args()
 
     start_time = get_utime()
@@ -922,20 +1081,23 @@ if __name__ == '__main__':
         new_af = enforce(enforcement_instance, args.semantics)
     else:
         print("c Soft targets detected: lexicographically minimizing target satisfaction and distance")
-        new_af = enforce_with_soft_targets_wght(enforcement_instance, args.semantics)
+        if not args.lex:
+            new_af = enforce_with_soft_targets_wght(enforcement_instance, args.semantics)
+        else:
+            new_af = enforce_with_soft_targets_lex(enforcement_instance, args.semantics)
 
     end_enf_time = get_utime()
     print("c Enforcement time:", round(end_enf_time-start_enf_time,2), "seconds")
     if new_af is not None and args.verbose:
-        new_af.print(enforcement_instance.int_to_arg)
         if args.mode == "cred":
             accepted = get_cred_accepted_arguments(new_af, args.semantics)
             accepted = set(enforcement_instance.int_to_arg[a] for a in accepted)
-            print(sorted(list(accepted)))
+            print("c Credulously accepted arguments:", sorted(list(accepted)))
         elif args.mode == "skept":
             accepted = get_skept_accepted_arguments(new_af, args.semantics)
             accepted = set(enforcement_instance.int_to_arg[a] for a in accepted)
-            print(sorted(list(accepted)))
+            print("c Skeptically accepted arguments:", sorted(list(accepted)))
+        new_af.print(enforcement_instance.int_to_arg)
 
 #    filename = sys.argv[1]
 #    semantics = sys.argv[2]

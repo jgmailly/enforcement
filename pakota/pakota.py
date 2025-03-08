@@ -1084,6 +1084,8 @@ if __name__ == '__main__':
         if not args.lex:
             new_af = enforce_with_soft_targets_wght(enforcement_instance, args.semantics)
         else:
+            for w in [pos_cred_weight, neg_cred_weight, pos_skept_weight, neg_skept_weight, pos_conjunct_weight, neg_conjunct_weight]:
+                assert w == 1 or w == float("inf"), "Only unit weights supported for lexicographic optimization"
             new_af = enforce_with_soft_targets_lex(enforcement_instance, args.semantics)
 
     end_enf_time = get_utime()
